@@ -33,7 +33,7 @@
     <div class="app-layout">
         <!-- Mobile Topbar (< 920px) -->
         <header class="mobile-topbar">
-            <a href="{{ url_for('catalog') }}" class="brand" style="gap: 0.6rem;">
+            <a href="{{ url_for('index') }}" class="brand" style="gap: 0.6rem;">
                 <div class="brand-icon" style="width: 32px; height: 32px; font-size: 1rem;">📦</div>
                 <div class="brand-title">
                     <span class="main-text" style="font-size: 0.95rem;">ระบบยืม-คืน</span>
@@ -59,7 +59,7 @@
         <aside class="app-sidebar" id="appSidebar">
             <!-- Sidebar Header: Brand -->
             <div class="sidebar-header">
-                <a href="{{ url_for('catalog') }}" class="brand">
+                <a href="{{ url_for('index') }}" class="brand">
                     <div class="brand-icon">📦</div>
                     <div class="brand-title">
                         <span class="main-text">ระบบยืม-คืน</span>
@@ -71,13 +71,27 @@
 
             <!-- Navigation Menu -->
             <nav class="sidebar-menu">
-                <div class="sidebar-section-title">เมนูผู้ใช้งาน / ผู้ยืม</div>
-                <a href="{{ url_for('catalog') }}" class="sidebar-link {% if request.endpoint == 'catalog' %}active{% endif %}">
-                    <span class="sidebar-icon">🔍</span>
-                    <span>คลังวัสดุ/ครุภัณฑ์</span>
-                </a>
+                {% if not current_user %}
+                    <div class="sidebar-section-title">เข้าใช้งานระบบ</div>
+                    <a href="{{ url_for('index') }}" class="sidebar-link {% if request.endpoint == 'index' %}active{% endif %}">
+                        <span class="sidebar-icon">🏠</span>
+                        <span>หน้าแรก</span>
+                    </a>
+                    <a href="{{ url_for('login') }}" class="sidebar-link {% if request.endpoint == 'login' %}active{% endif %}">
+                        <span class="sidebar-icon">🔑</span>
+                        <span>เข้าสู่ระบบ</span>
+                    </a>
+                    <a href="{{ url_for('register') }}" class="sidebar-link {% if request.endpoint == 'register' %}active{% endif %}">
+                        <span class="sidebar-icon">📝</span>
+                        <span>สมัครสมาชิก</span>
+                    </a>
+                {% else %}
+                    <div class="sidebar-section-title">เมนูผู้ใช้งาน / ผู้ยืม</div>
+                    <a href="{{ url_for('catalog') }}" class="sidebar-link {% if request.endpoint == 'catalog' %}active{% endif %}">
+                        <span class="sidebar-icon">🔍</span>
+                        <span>คลังวัสดุ/ครุภัณฑ์</span>
+                    </a>
 
-                {% if current_user %}
                     <!-- User Profile: View Only -->
                     <a href="{{ url_for('profile') }}" class="sidebar-link {% if request.endpoint == 'profile' %}active{% endif %}">
                         <span class="sidebar-icon">👤</span>

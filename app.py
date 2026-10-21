@@ -236,9 +236,21 @@ def create_app():
         return Response(xml_content, mimetype='application/xml')
 
     # -------------------------------------------------------------
-    # CATALOG & BROWSING
+    # HOME / LANDING PAGE
     # -------------------------------------------------------------
     @app.route('/')
+    def index():
+        if 'user_id' in session:
+            user = User.query.get(session['user_id'])
+            if user:
+                if user.role in ['admin', 'staff']:
+                    return redirect(url_for('admin_requests'))
+                return redirect(url_for('catalog'))
+        return render_template('index.html')
+
+    # -------------------------------------------------------------
+    # CATALOG & BROWSING
+    # -------------------------------------------------------------
     @app.route('/catalog')
     def catalog():
         search_query = request.args.get('q', '').strip()
