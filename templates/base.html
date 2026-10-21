@@ -31,6 +31,7 @@
 </head>
 <body>
     <div class="app-layout">
+        {% if request.endpoint != 'index' %}
         <!-- Mobile Topbar (< 920px) -->
         <header class="mobile-topbar">
             <a href="{{ url_for('index') }}" class="brand" style="gap: 0.6rem;">
@@ -186,6 +187,7 @@
                 {% endif %}
             </div>
         </aside>
+        {% endif %}
 
         <!-- Right Main Content Area -->
         <div class="app-main">
