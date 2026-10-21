@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}เข้าสู่ระบบ{% endblock %}
+
+{% block content %}
+<div style="max-width: 440px; margin: 2rem auto;">
+    <div class="card">
+        <div class="card-body" style="padding: 2.25rem;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <div style="width: 52px; height: 52px; background: var(--primary); color: white; border-radius: var(--radius-lg); display: inline-flex; align-items: center; justify-content: center; font-size: 1.6rem; margin-bottom: 0.75rem;">
+                    📦
+                </div>
+                <h1 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">เข้าสู่ระบบ</h1>
+                <p style="font-size: 0.875rem; color: var(--text-muted);">ระบบยืม-คืนวัสดุและครุภัณฑ์ วิทยาลัยการอาชีพหนองหาน</p>
+            </div>
+
+            <!-- Standard Login Form -->
+            <form action="{{ url_for('login') }}" method="POST">
+                <div class="form-group">
+                    <label class="form-label">อีเมลผู้ใช้งาน</label>
+                    <input type="email" name="email" class="form-control" placeholder="เช่น student@nonghan.ac.th" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <label class="form-label" style="margin-bottom: 0;">รหัสผ่าน</label>
+                    </div>
+                    <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 0.95rem; margin-top: 0.5rem;">
+                    เข้าสู่ระบบ
+                </button>
+            </form>
+
+            <div style="margin: 1.75rem 0; display: flex; align-items: center; text-align: center; color: var(--text-subtle); font-size: 0.8rem;">
+                <div style="flex: 1; border-bottom: 1px solid var(--border);"></div>
+                <span style="padding: 0 0.75rem; font-weight: 500;">หรือเข้าสู่ระบบทดสอบตามบทบาท</span>
+                <div style="flex: 1; border-bottom: 1px solid var(--border);"></div>
+            </div>
+
+            <!-- Quick Demo Login Buttons -->
+            <form action="{{ url_for('login') }}" method="POST" style="display: flex; flex-direction: column; gap: 0.6rem;">
+                <button type="submit" name="quick_role" value="admin" class="btn btn-secondary" style="justify-content: flex-start; padding: 0.6rem 0.85rem;">
+                    <span style="font-size: 1.1rem;">🛡️</span>
+                    <div style="text-align: left; line-height: 1.2;">
+                        <div style="font-weight: 600; font-size: 0.85rem;">ผู้ดูแลระบบ (Admin)</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">จัดการระบบทั้งหมด / อนุมัติ / เพิ่มลบข้อมูล</div>
+                    </div>
+                </button>
+
+                <button type="submit" name="quick_role" value="staff" class="btn btn-secondary" style="justify-content: flex-start; padding: 0.6rem 0.85rem;">
+                    <span style="font-size: 1.1rem;">📋</span>
+                    <div style="text-align: left; line-height: 1.2;">
+                        <div style="font-weight: 600; font-size: 0.85rem;">เจ้าหน้าที่พัสดุ (Staff)</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">ตรวจสอบและกดอนุมัติคำขอยืม / บันทึกรับคืน / ออกใบเสร็จ</div>
+                    </div>
+                </button>
+
+                <button type="submit" name="quick_role" value="student" class="btn btn-secondary" style="justify-content: flex-start; padding: 0.6rem 0.85rem;">
+                    <span style="font-size: 1.1rem;">🎓</span>
+                    <div style="text-align: left; line-height: 1.2;">
+                        <div style="font-weight: 600; font-size: 0.85rem;">นักเรียน/นักศึกษา (Student)</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">ดูข้อมูลส่วนตัว / ยื่นคำขอยืม / ตรวจสอบกำหนดคืน</div>
+                    </div>
+                </button>
+
+                <button type="submit" name="quick_role" value="teacher" class="btn btn-secondary" style="justify-content: flex-start; padding: 0.6rem 0.85rem;">
+                    <span style="font-size: 1.1rem;">👨‍🏫</span>
+                    <div style="text-align: left; line-height: 1.2;">
+                        <div style="font-weight: 600; font-size: 0.85rem;">อาจารย์/ครูผู้สอน (Teacher)</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">ยืมอุปกรณ์สำหรับการเรียนการสอน</div>
+                    </div>
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 1.75rem; font-size: 0.875rem; color: var(--text-muted);">
+                ยังไม่มีบัญชีผู้ใช้? <a href="{{ url_for('register') }}" style="color: var(--accent-blue); font-weight: 600;">สมัครสมาชิกใหม่</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

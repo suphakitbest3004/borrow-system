@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}จัดการสถานที่จัดเก็บอุปกรณ์{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>📍</span> จัดการสถานที่จัดเก็บ (Storage Locations)
+        </h1>
+        <p class="page-subtitle">กำหนดจุดจัดเก็บ คลังพัสดุ ตึก และห้องปฏิบัติการสำหรับอุปกรณ์</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addLocationModal')">
+            <span>➕</span> เพิ่มสถานที่จัดเก็บใหม่
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        {% if locations %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">รหัส</th>
+                            <th>ชื่อสถานที่จัดเก็บ / ห้อง</th>
+                            <th>รายละเอียดเพิ่มเติม / ตู้จัดเก็บ</th>
+                            <th>จำนวนอุปกรณ์ที่จัดเก็บ</th>
+                            <th style="text-align: right;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loc in locations %}
+                            <tr>
+                                <td style="font-family: monospace;">#LOC-{{ loc.location_id }}</td>
+                                <td><strong style="font-size: 0.95rem;">{{ loc.location_name }}</strong></td>
+                                <td>{{ loc.description or '-' }}</td>
+                                <td><span style="font-weight: 600;">{{ loc.equipment_list|length }}</span> รายการ</td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="openEditLocationModal('{{ loc.location_id }}', '{{ loc.location_name }}', '{{ loc.description or '' }}')">
+                                        ✏️ แก้ไข
+                                    </button>
+                                    {% if current_user.role == 'admin' %}
+                                        <form action="{{ url_for('delete_location', location_id=loc.location_id) }}" method="POST" style="display: inline-block;">
+                                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('ยืนยันลบสถานที่ {{ loc.location_name }} ใช่หรือไม่?')">
+                                                🗑️ ลบ
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                ไม่มีข้อมูลสถานที่จัดเก็บ
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Location Modal -->
+<div class="modal-backdrop" id="addLocationModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 class="modal-title">➕ เพิ่มสถานที่จัดเก็บใหม่</h2>
+            <button type="button" class="modal-close" onclick="closeModal('addLocationModal')">✕</button>
+        </div>
+        <form action="{{ url_for('add_location') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">ชื่อสถานที่ / ห้อง / อาคาร <span style="color: var(--danger);">*</span></label>
+                    <input type="text" name="location_name" class="form-control" placeholder="เช่น ห้องปฏิบัติการช่างเชื่อม อาคาร 2" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">รายละเอียด / ตู้ล็อกเกอร์</label>
+                    <textarea name="description" class="form-control" rows="2" placeholder="เช่น ชั้นวางครุภัณฑ์ A1-A3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addLocationModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">บันทึกสถานที่</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Location Modal -->
+<div class="modal-backdrop" id="editLocationModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 class="modal-title">✏️ แก้ไขสถานที่จัดเก็บ</h2>
+            <button type="button" class="modal-close" onclick="closeModal('editLocationModal')">✕</button>
+        </div>
+        <form id="editLocationForm" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">ชื่อสถานที่</label>
+                    <input type="text" name="location_name" id="editLocationName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">รายละเอียด</label>
+                    <textarea name="description" id="editLocationDesc" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editLocationModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openEditLocationModal(id, name, desc) {
+    document.getElementById('editLocationForm').action = `/admin/locations/${id}/edit`;
+    document.getElementById('editLocationName').value = name;
+    document.getElementById('editLocationDesc').value = desc;
+    openModal('editLocationModal');
+}
+</script>
+{% endblock %}

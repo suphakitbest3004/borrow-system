@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}จัดการข้อมูลวัสดุและครุภัณฑ์{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>🛠️</span> จัดการข้อมูลวัสดุและครุภัณฑ์
+        </h1>
+        <p class="page-subtitle">เพิ่ม ลบ แก้ไข ข้อมูลวัสดุ ครุภัณฑ์ พร้อมอัปโหลดรูปภาพอุปกรณ์ (CRUD)</p>
+    </div>
+    <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+        <a href="{{ url_for('new_equipment_page') }}" class="btn btn-primary btn-sm">
+            <span>➕</span> หน้าเพิ่มวัสดุ/ครุภัณฑ์ (บันทึกทั้งหมด)
+        </a>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('addEquipmentModal')">
+            <span>⚡</span> เพิ่มด่วน (Modal)
+        </button>
+        <a href="{{ url_for('admin_categories') }}" class="btn btn-secondary btn-sm">
+            <span>🏷️</span> จัดการประเภทใหม่
+        </a>
+    </div>
+</div>
+
+<!-- Search & Category Filter -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding: 1rem 1.25rem;">
+        <form method="GET" action="{{ url_for('admin_equipment') }}" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <div style="flex: 2; min-width: 220px;">
+                <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="ค้นหารหัส หรือชื่ออุปกรณ์...">
+            </div>
+            <div style="flex: 1; min-width: 180px;">
+                <select name="category" class="form-control" onchange="this.form.submit()">
+                    <option value="">ทุกหมวดหมู่</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.category_id }}" {% if selected_cat == cat.category_id %}selected{% endif %}>
+                            {{ cat.category_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">ค้นหา</button>
+            {% if search_query or selected_cat %}
+                <a href="{{ url_for('admin_equipment') }}" class="btn btn-secondary btn-sm">ล้าง</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Equipment Table Card -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        {% if equipment_list %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 70px;">รูปภาพ</th>
+                            <th>รหัส</th>
+                            <th>ชื่อวัสดุ / ครุภัณฑ์</th>
+                            <th>หมวดหมู่</th>
+                            <th>สถานที่จัดเก็บ</th>
+                            <th>จำนวน (ว่าง/รวม)</th>
+                            <th>สถานะ</th>
+                            <th style="text-align: right;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in equipment_list %}
+                            <tr>
+                                <td>
+                                    <div style="width: 52px; height: 52px; border-radius: var(--radius-sm); border: 1px solid var(--border); overflow: hidden; display: flex; align-items: center; justify-content: center; background: #fff;">
+                                        {% if item.image_path %}
+                                            <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                        {% else %}
+                                            <span style="font-size: 1.5rem; color: var(--text-subtle);">📦</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td style="font-family: monospace; font-weight: 600;">
+                                    {{ item.equipment_code }}
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600;">{{ item.name }}</div>
+                                    {% if item.description %}
+                                        <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            {{ item.description }}
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge badge-secondary">{{ item.category.category_name }}</span>
+                                    <div style="font-size: 0.7rem; color: var(--text-muted);">{{ item.category.type_display }}</div>
+                                </td>
+                                <td>
+                                    <span style="font-size: 0.85rem;">📍 {{ item.location.location_name }}</span>
+                                </td>
+                                <td>
+                                    <span style="font-weight: 700; color: {% if item.available_quantity > 0 %}var(--success){% else %}var(--danger){% endif %};">
+                                        {{ item.available_quantity }}
+                                    </span>
+                                    / {{ item.total_quantity }} ชิ้น
+                                </td>
+                                <td>
+                                    <span class="badge {{ item.status_badge_class }}">{{ item.status_display }}</span>
+                                </td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                    <!-- Edit Button -->
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="openEditEquipmentModal('{{ item.equipment_id }}', '{{ item.equipment_code }}', '{{ item.name|escape }}', '{{ item.category_id }}', '{{ item.location_id }}', '{{ item.total_quantity }}', '{{ item.status }}', '{{ (item.description or '')|escape }}', '{{ item.image_path or '' }}')">
+                                        ✏️ แก้ไข
+                                    </button>
+
+                                    <!-- Delete Button (Admin only) -->
+                                    {% if current_user.role == 'admin' %}
+                                        <form action="{{ url_for('delete_equipment', equipment_id=item.equipment_id) }}" method="POST" style="display: inline-block;">
+                                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('ยืนยันที่จะลบ {{ item.name }} ใช่หรือไม่?')">
+                                                🗑️ ลบ
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                ไม่มีข้อมูลวัสดุ/ครุภัณฑ์
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Equipment Modal (Requirement 3 & 4) -->
+<div class="modal-backdrop" id="addEquipmentModal">
+    <div class="modal-box" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title">➕ เพิ่มวัสดุ / ครุภัณฑ์ใหม่</h2>
+            <button type="button" class="modal-close" onclick="closeModal('addEquipmentModal')">✕</button>
+        </div>
+        <form action="{{ url_for('add_equipment') }}" method="POST" enctype="multipart/form-data">
+            <div class="modal-body">
+                <!-- Image Upload (Requirement 4) -->
+                <div class="form-group">
+                    <label class="form-label">รูปภาพอุปกรณ์ (Requirement 4: เพิ่มรูปภาพอุปกรณ์ได้)</label>
+                    <div class="image-upload-wrapper" onclick="document.getElementById('addEqImageInput').click();">
+                        <div class="image-preview-box">
+                            <img id="newEqPreview" src="{{ url_for('static', filename='uploads/multimeter.svg') }}" alt="Preview">
+                        </div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">คลิกเพื่อเลือกไฟล์รูปภาพ</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">รองรับไฟล์ PNG, JPG, JPEG, WEBP, SVG</div>
+                        <input type="file" name="image" id="addEqImageInput" data-preview="newEqPreview" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">รหัสพัสดุ/ครุภัณฑ์ <span style="color: var(--danger);">*</span></label>
+                        <input type="text" name="equipment_code" class="form-control" placeholder="เช่น EQ-EL-010 หรือบาร์โค้ด" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">จำนวนทั้งหมด (ชิ้น) <span style="color: var(--danger);">*</span></label>
+                        <input type="number" name="total_quantity" class="form-control" value="1" min="1" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ชื่อวัสดุ / ครุภัณฑ์ <span style="color: var(--danger);">*</span></label>
+                    <input type="text" name="name" class="form-control" placeholder="เช่น เครื่องวัดความเร็วรอบดิจิทัล" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">หมวดหมู่ <span style="color: var(--danger);">*</span></label>
+                        <select name="category_id" class="form-control" required>
+                            {% for cat in categories %}
+                                <option value="{{ cat.category_id }}">{{ cat.category_name }} ({{ cat.type_display }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">สถานที่จัดเก็บ <span style="color: var(--danger);">*</span></label>
+                        <select name="location_id" class="form-control" required>
+                            {% for loc in locations %}
+                                <option value="{{ loc.location_id }}">{{ loc.location_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">สถานะเริ่มต้น</label>
+                        <select name="status" class="form-control">
+                            <option value="available">พร้อมใช้งาน</option>
+                            <option value="maintenance">ส่งซ่อมบำรุง</option>
+                            <option value="damaged">ชำรุดเสียหาย</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">รายละเอียด / คุณสมบัติเพิ่มเติม</label>
+                    <textarea name="description" class="form-control" rows="2" placeholder="เช่น ยี่ห้อ รุ่น สเปก หรือหมายเหตุการใช้งาน"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: space-between;">
+                <a href="{{ url_for('new_equipment_page') }}" style="font-size: 0.82rem; color: var(--accent-blue); text-decoration: underline;">
+                    📋 หรือไปยังหน้าเพิ่มหลายรายการพร้อมกัน
+                </a>
+                <div style="display: flex; gap: 0.65rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addEquipmentModal')">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary" style="font-weight: 600;"><span>💾</span> บันทึกทั้งหมด</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Equipment Modal (Requirement 3 & 4) -->
+<div class="modal-backdrop" id="editEquipmentModal">
+    <div class="modal-box" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title">✏️ แก้ไขข้อมูลวัสดุ / ครุภัณฑ์</h2>
+            <button type="button" class="modal-close" onclick="closeModal('editEquipmentModal')">✕</button>
+        </div>
+        <form id="editEquipmentForm" method="POST" enctype="multipart/form-data">
+            <div class="modal-body">
+                <!-- Image Upload & Preview -->
+                <div class="form-group">
+                    <label class="form-label">เปลี่ยนรูปภาพอุปกรณ์</label>
+                    <div class="image-upload-wrapper" onclick="document.getElementById('editEqImageInput').click();">
+                        <div class="image-preview-box">
+                            <img id="editEqPreview" src="" alt="Preview">
+                        </div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: var(--primary);">คลิกเพื่อเปลี่ยนรูปภาพ</div>
+                        <input type="file" name="image" id="editEqImageInput" data-preview="editEqPreview" accept="image/*" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">รหัสอุปกรณ์</label>
+                        <input type="text" id="editEqCode" class="form-control" disabled style="background: var(--bg-subtle);">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">จำนวนทั้งหมด (ชิ้น)</label>
+                        <input type="number" name="total_quantity" id="editEqTotalQty" class="form-control" min="1" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ชื่อวัสดุ / ครุภัณฑ์</label>
+                    <input type="text" name="name" id="editEqName" class="form-control" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">หมวดหมู่</label>
+                        <select name="category_id" id="editEqCategory" class="form-control">
+                            {% for cat in categories %}
+                                <option value="{{ cat.category_id }}">{{ cat.category_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">สถานที่จัดเก็บ</label>
+                        <select name="location_id" id="editEqLocation" class="form-control">
+                            {% for loc in locations %}
+                                <option value="{{ loc.location_id }}">{{ loc.location_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">สถานะ</label>
+                        <select name="status" id="editEqStatus" class="form-control">
+                            <option value="available">พร้อมใช้งาน</option>
+                            <option value="borrowed">ถูกยืมทั้งหมด</option>
+                            <option value="maintenance">ส่งซ่อมบำรุง</option>
+                            <option value="damaged">ชำรุดเสียหาย</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">รายละเอียด</label>
+                    <textarea name="description" id="editEqDesc" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editEquipmentModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary" style="font-weight: 600;"><span>💾</span> บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openEditEquipmentModal(id, code, name, categoryId, locationId, totalQty, status, description, imagePath) {
+    document.getElementById('editEquipmentForm').action = `/admin/equipment/${id}/edit`;
+    document.getElementById('editEqCode').value = code;
+    document.getElementById('editEqName').value = name;
+    document.getElementById('editEqCategory').value = categoryId;
+    document.getElementById('editEqLocation').value = locationId;
+    document.getElementById('editEqTotalQty').value = totalQty;
+    document.getElementById('editEqStatus').value = status;
+    document.getElementById('editEqDesc').value = description;
+    
+    const previewEl = document.getElementById('editEqPreview');
+    if (imagePath) {
+        previewEl.src = `/static/${imagePath}`;
+    } else {
+        previewEl.src = '/static/uploads/multimeter.svg';
+    }
+
+    openModal('editEquipmentModal');
+}
+</script>
+{% endblock %}

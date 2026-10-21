@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}พิมพ์ใบรับเข้าวัสดุ/ครุภัณฑ์ เลขที่ {{ receipt.receipt_number }}{% endblock %}
+
+{% block extra_head %}
+<style>
+@media print {
+    .no-print { display: none !important; }
+    body { background: white !important; }
+    .app-layout { display: block !important; }
+    .app-sidebar { display: none !important; }
+    .app-main { margin: 0 !important; padding: 0 !important; }
+    .main-content { padding: 0 !important; }
+    .app-footer { display: none !important; }
+    .mobile-topbar { display: none !important; }
+    .permit-sheet { box-shadow: none !important; border: none !important; margin: 0 !important; }
+}
+.permit-sheet {
+    background: #fff; border: 2px solid #155724; border-radius: 4px;
+    padding: 2rem 2.5rem; font-family: 'IBM Plex Sans Thai', 'Prompt', sans-serif;
+    font-size: 0.92rem; color: #111; max-width: 794px; margin: 0 auto; line-height: 1.7;
+}
+.permit-school-header { text-align: center; margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 3px double #155724; }
+.permit-school-header h1 { font-size: 1.1rem; font-weight: 700; margin: 0 0 0.1rem 0; color: #155724; }
+.permit-school-header .sub-dept { font-size: 0.82rem; color: #555; }
+.permit-doc-title {
+    text-align: center; font-size: 1.15rem; font-weight: 700; margin: 1rem 0;
+    padding: 0.5rem; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc;
+    letter-spacing: 0.05em; color: #155724;
+}
+.permit-doc-number { display: flex; justify-content: flex-end; font-size: 0.82rem; margin-bottom: 1rem; gap: 1.5rem; }
+.permit-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; margin-bottom: 1.2rem; }
+.permit-info-item { display: flex; gap: 0.4rem; align-items: baseline; border-bottom: 1px dotted #ccc; padding-bottom: 0.25rem; }
+.permit-info-item .label { font-weight: 600; white-space: nowrap; min-width: 130px; font-size: 0.83rem; }
+.permit-info-item .value { flex: 1; font-size: 0.85rem; }
+.permit-table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem 0; font-size: 0.85rem; }
+.permit-table th { background: #155724; color: #fff; padding: 0.5rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.82rem; }
+.permit-table td { border: 1px solid #bbb; padding: 0.5rem 0.75rem; vertical-align: top; }
+.permit-table tbody tr:nth-child(even) { background: #f7f7f7; }
+.permit-signature-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-top: 2.5rem; }
+.signature-box { text-align: center; padding-top: 0.5rem; }
+.signature-line { border-bottom: 1px solid #555; height: 48px; margin-bottom: 0.5rem; }
+.signature-box .sig-label { font-size: 0.78rem; font-weight: 600; color: #155724; margin-bottom: 0.15rem; }
+.signature-box .sig-name { font-size: 0.8rem; color: #333; height: 1.4em; }
+.signature-box .sig-date { font-size: 0.75rem; color: #666; margin-top: 0.25rem; }
+.signature-box .sig-dept { font-size: 0.72rem; color: #888; }
+.permit-footer-note { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid #ddd; font-size: 0.72rem; color: #888; text-align: center; }
+.section-title { font-weight: 700; font-size: 0.88rem; margin: 1rem 0 0.5rem 0; color: #155724; border-left: 4px solid #155724; padding-left: 0.6rem; }
+.summary-row { display: flex; gap: 2rem; margin: 0.75rem 0; font-size: 0.88rem; }
+.summary-item { display: flex; gap: 0.4rem; }
+.summary-item .s-label { font-weight: 600; color: #155724; }
+.receipt-type-badge {
+    display: inline-block; padding: 0.15rem 0.6rem; border-radius: 4px;
+    font-size: 0.78rem; font-weight: 600;
+}
+.rt-purchase { background: #e3f2fd; color: #1565c0; }
+.rt-direct { background: #e8f5e9; color: #2e7d32; }
+.rt-donation { background: #e0f7fa; color: #00838f; }
+.rt-transfer { background: #fff3e0; color: #e65100; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Print Controls (hidden when printing) -->
+<div class="no-print" style="max-width: 794px; margin: 0 auto 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+    <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <a href="{{ url_for('goods_receiving_detail', receipt_id=receipt.receipt_id) }}" class="btn btn-secondary btn-sm">← กลับรายละเอียด</a>
+        <a href="{{ url_for('goods_receiving') }}" class="btn btn-secondary btn-sm">← กลับหน้ารับเข้า</a>
+    </div>
+    <button onclick="window.print()" class="btn btn-primary btn-sm">🖨️ พิมพ์เอกสาร</button>
+</div>
+
+<!-- Print Document -->
+<div class="permit-sheet">
+    <!-- Header -->
+    <div class="permit-school-header">
+        <h1>วิทยาลัยการอาชีพหนองหาน</h1>
+        <div class="sub-dept">งานพัสดุ ฝ่ายบริหารทรัพยากร | สถาบันการอาชีวศึกษาภาคตะวันออกเฉียงเหนือ 1</div>
+    </div>
+
+    <!-- Document Title -->
+    <div class="permit-doc-title">
+        {% if receipt.receipt_type == 'purchase' %}
+            ใบตรวจรับพัสดุ/ครุภัณฑ์ (จากใบสั่งซื้อ)
+        {% elif receipt.receipt_type == 'donation' %}
+            ใบรับบริจาควัสดุ/ครุภัณฑ์
+        {% elif receipt.receipt_type == 'transfer' %}
+            ใบรับโอนย้ายวัสดุ/ครุภัณฑ์
+        {% else %}
+            ใบรับเข้าวัสดุ/ครุภัณฑ์
+        {% endif %}
+    </div>
+
+    <!-- Document Number & Date -->
+    <div class="permit-doc-number">
+        <span>เลขที่ใบรับ: <strong>{{ receipt.receipt_number }}</strong></span>
+        <span>วันที่: <strong>{{ receipt.received_date.strftime('%d/%m/%Y') if receipt.received_date else '-' }}</strong></span>
+    </div>
+
+    <!-- Receipt Info -->
+    <div class="section-title">ข้อมูลการรับเข้า</div>
+    <div class="permit-info-grid">
+        <div class="permit-info-item">
+            <span class="label">ประเภทการรับเข้า:</span>
+            <span class="value">
+                {% if receipt.receipt_type == 'purchase' %}
+                    <span class="receipt-type-badge rt-purchase">📦 รับจากใบสั่งซื้อ (PO)</span>
+                {% elif receipt.receipt_type == 'direct' %}
+                    <span class="receipt-type-badge rt-direct">📥 รับเข้าตรง</span>
+                {% elif receipt.receipt_type == 'donation' %}
+                    <span class="receipt-type-badge rt-donation">🎁 รับบริจาค</span>
+                {% elif receipt.receipt_type == 'transfer' %}
+                    <span class="receipt-type-badge rt-transfer">🔄 โอนย้าย</span>
+                {% endif %}
+            </span>
+        </div>
+        <div class="permit-info-item">
+            <span class="label">วันที่รับเข้า:</span>
+            <span class="value">{{ receipt.received_date.strftime('%d/%m/%Y เวลา %H:%M น.') if receipt.received_date else '-' }}</span>
+        </div>
+        <div class="permit-info-item">
+            <span class="label">แหล่งที่มา:</span>
+            <span class="value">{{ receipt.supplier_name or '-' }}</span>
+        </div>
+        <div class="permit-info-item">
+            <span class="label">ผู้รับเข้า:</span>
+            <span class="value">{{ receipt.receiver.full_name if receipt.receiver else '-' }}</span>
+        </div>
+        <div class="permit-info-item">
+            <span class="label">เอกสารอ้างอิง:</span>
+            <span class="value">{{ receipt.document_ref or '-' }}</span>
+        </div>
+        {% if receipt.po_id and receipt.purchase_order %}
+        <div class="permit-info-item">
+            <span class="label">อ้างอิง PO:</span>
+            <span class="value">{{ receipt.purchase_order.po_number }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if receipt.note %}
+    <div style="padding: 0.5rem 0.75rem; border: 1px solid #c3e6cb; background: #f0fff4; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem;">
+        <strong style="color: #155724;">หมายเหตุ:</strong> {{ receipt.note }}
+    </div>
+    {% endif %}
+
+    <!-- Summary -->
+    <div class="summary-row">
+        <div class="summary-item">
+            <span class="s-label">จำนวนรายการ:</span>
+            <span>{{ receipt.total_items }} รายการ</span>
+        </div>
+        <div class="summary-item">
+            <span class="s-label">จำนวนรวมทั้งสิ้น:</span>
+            <span>{{ receipt.total_quantity }} ชิ้น</span>
+        </div>
+        {% set updated_count = receipt.items | selectattr('inventory_updated') | list | length %}
+        <div class="summary-item">
+            <span class="s-label">อัปเดตสต็อก:</span>
+            <span>{{ updated_count }} รายการ</span>
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="section-title">รายการวัสดุ/ครุภัณฑ์ที่รับเข้า</div>
+    <table class="permit-table">
+        <thead>
+            <tr>
+                <th style="width: 40px;">ลำดับ</th>
+                <th>ชื่อรายการ</th>
+                <th>รหัสพัสดุ</th>
+                <th style="width: 70px;">จำนวน</th>
+                <th style="width: 60px;">หน่วย</th>
+                <th style="width: 80px;">สภาพ</th>
+                <th>ผูกกับรายการในระบบ</th>
+                <th style="width: 80px; text-align: center;">สต็อก</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in receipt.items %}
+            <tr>
+                <td style="text-align: center;">{{ loop.index }}</td>
+                <td style="font-weight: 600;">{{ item.item_name }}</td>
+                <td>{{ item.item_code or '-' }}</td>
+                <td style="text-align: center; font-weight: 700;">{{ item.quantity }}</td>
+                <td style="text-align: center;">{{ item.unit or 'ชิ้น' }}</td>
+                <td style="text-align: center;">{{ item.condition_display }}</td>
+                <td>
+                    {% if item.equipment %}
+                        {{ item.equipment.equipment_code }} - {{ item.equipment.name }}
+                    {% else %}
+                        <span style="color: #999;">- ไม่ได้ผูก -</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: center;">
+                    {% if item.inventory_updated %}
+                        <span style="color: #2e7d32; font-weight: 600;">✅</span>
+                    {% else %}
+                        <span style="color: #999;">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr style="background: #f0fff4;">
+                <td colspan="3" style="text-align: right; font-weight: 700; border: 1px solid #bbb;">รวมทั้งสิ้น</td>
+                <td style="text-align: center; font-weight: 700; border: 1px solid #bbb; color: #155724;">{{ receipt.total_quantity }}</td>
+                <td style="border: 1px solid #bbb;">ชิ้น</td>
+                <td colspan="3" style="border: 1px solid #bbb;"></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- Signatures -->
+    <div class="permit-signature-row">
+        <div class="signature-box">
+            <div class="sig-label">ผู้รับเข้าวัสดุ/ครุภัณฑ์</div>
+            <div class="signature-line"></div>
+            <div class="sig-name">{{ receipt.receiver.full_name if receipt.receiver else '........................................' }}</div>
+            <div class="sig-dept">{{ receipt.receiver.role_display if receipt.receiver else 'ตำแหน่ง ........................................' }}</div>
+            <div class="sig-date">วันที่ {{ receipt.received_date.strftime('%d/%m/%Y') if receipt.received_date else '....../....../......' }}</div>
+        </div>
+        <div class="signature-box">
+            <div class="sig-label">ผู้ตรวจสอบ/อนุมัติ</div>
+            <div class="signature-line"></div>
+            <div class="sig-name">........................................</div>
+            <div class="sig-dept">ตำแหน่ง ........................................</div>
+            <div class="sig-date">วันที่ ....../....../......</div>
+        </div>
+    </div>
+
+    <!-- Footer Note -->
+    <div class="permit-footer-note">
+        เอกสารนี้ออกโดยระบบสารสนเทศบริการยืม-คืนวัสดุและครุภัณฑ์ วิทยาลัยการอาชีพหนองหาน |
+        พิมพ์เมื่อ {{ now.strftime('%d/%m/%Y %H:%M น.') }} |
+        ใบรับเข้าเลขที่ {{ receipt.receipt_number }}
+    </div>
+</div>
+{% endblock %}

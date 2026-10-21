@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}ข้อมูลส่วนตัวและประวัติการยืม{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>👤</span> ข้อมูลส่วนตัวและประวัติการยืม
+        </h1>
+        <p class="page-subtitle">ตรวจสอบข้อมูลผู้ใช้งาน สถานะรายการยืมปัจจุบัน และประวัติย้อนหลัง</p>
+    </div>
+    <div>
+        <span class="badge badge-secondary" style="padding: 0.45rem 0.95rem; font-size: 0.8rem; border-color: var(--border-dark); background: #ffffff;">
+            🔒 ดูข้อมูลได้อย่างเดียว (ไม่อนุญาตให้แก้ไข)
+        </span>
+    </div>
+</div>
+
+<!-- Personal Profile Summary Card -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-body">
+        <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;">
+            <!-- Big Avatar -->
+            <div style="width: 80px; height: 80px; background: var(--primary); color: white; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 700; flex-shrink: 0;">
+                {{ user.first_name[0] }}
+            </div>
+
+            <!-- Profile Info Grid -->
+            <div style="flex: 1; min-width: 260px;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.35rem;">
+                    <h2 style="font-size: 1.35rem; font-weight: 700;">{{ user.full_name }}</h2>
+                    <span class="badge {{ user.role_badge_class }}">{{ user.role_display }}</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.85rem 1.75rem; font-size: 0.88rem; margin-top: 1rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.15rem;">
+                        <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">รหัสประจำตัว</span>
+                        <span style="font-family: var(--font-numeric); font-weight: 600; color: var(--text-main);">{{ user.student_or_citizen_id }}</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.15rem;">
+                        <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">แผนกวิชา / สังกัด</span>
+                        <span style="font-weight: 500; color: var(--text-main);">{{ user.department or 'ไม่ระบุ' }}</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.15rem;">
+                        <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">อีเมลสำหรับติดต่อ</span>
+                        <span style="font-weight: 500; color: var(--text-main);">{{ user.email }}</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.15rem;">
+                        <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">เบอร์โทรศัพท์</span>
+                        <span style="font-family: var(--font-numeric); font-weight: 500; color: var(--text-main);">{{ user.phone_number or '-' }}</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.15rem;">
+                        <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">LINE User ID</span>
+                        {% if user.line_user_id %}
+                            <span style="font-family: var(--font-numeric); color: var(--success); font-weight: 600;">{{ user.line_user_id }}</span>
+                        {% else %}
+                            <span style="color: var(--text-subtle);">-</span>
+                        {% endif %}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.15rem;">
+                        <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em;">วันที่ลงทะเบียน</span>
+                        <span style="font-family: var(--font-numeric); font-weight: 500; color: var(--text-main);">{{ user.created_at.strftime('%d/%m/%Y') }}</span>
+                </div>
+
+                <!-- View-Only Notice -->
+                <div style="background: var(--bg-subtle); border-radius: var(--radius-sm); padding: 0.75rem 1rem; border: 1px dashed var(--border-dark); margin-top: 1.25rem; font-size: 0.82rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.65rem;">
+                    <span style="font-size: 1.15rem;">🔒</span>
+                    <div>
+                        <strong>สิทธิ์การเข้าถึงข้อมูล:</strong> ผู้ใช้งานสามารถดูข้อมูลส่วนตัวและประวัติการทำรายการได้ แต่<strong>ไม่สามารถแก้ไขข้อมูลได้</strong> (ข้อมูลนี้เชื่อมโยงและผ่านการรับรองจากระบบงานทะเบียนกลางของวิทยาลัย)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-value">{{ stats.active_borrowed }}</div>
+            <div class="stat-label">รายการที่กำลังยืมอยู่</div>
+        </div>
+        <div class="stat-icon" style="color: var(--accent-blue);">📦</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: {% if stats.overdue_count > 0 %}var(--danger){% else %}var(--text-main){% endif %};">
+                {{ stats.overdue_count }}
+            </div>
+            <div class="stat-label">เกินกำหนดส่งคืน</div>
+        </div>
+        <div class="stat-icon" style="color: var(--danger);">⚠️</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value">{{ stats.total_requests }}</div>
+            <div class="stat-label">คำขอยืมทั้งหมด</div>
+        </div>
+        <div class="stat-icon" style="color: var(--warning);">📝</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value">{{ stats.completed_returns }}</div>
+            <div class="stat-label">คืนสำเร็จแล้ว</div>
+        </div>
+        <div class="stat-icon" style="color: var(--success);">✅</div>
+    </div>
+</div>
+
+<!-- Section 1: Active Borrowings (กำลังยืมอยู่) -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <span>📦</span> รายการอุปกรณ์ที่กำลังยืมอยู่ในขณะนี้
+        </h3>
+        <span class="badge badge-info">{{ active_borrowings|length }} รายการ</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if active_borrowings %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>รหัสยืม</th>
+                            <th>อุปกรณ์</th>
+                            <th>จำนวน</th>
+                            <th>วันที่เริ่มยืม</th>
+                            <th>กำหนดส่งคืน</th>
+                            <th>สถานะ / คงเหลือ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in active_borrowings %}
+                            <tr>
+                                <td style="font-family: monospace; font-weight: 600;">#{{ item.borrow_id }}</td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        {% if item.equipment.image_path %}
+                                            <img src="{{ url_for('static', filename=item.equipment.image_path) }}" alt="" style="width: 36px; height: 36px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border);">
+                                        {% else %}
+                                            <div style="width: 36px; height: 36px; background: var(--bg-subtle); display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm);">📦</div>
+                                        {% endif %}
+                                        <div>
+                                            <div style="font-weight: 600;">{{ item.equipment.name }}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">{{ item.equipment.equipment_code }} | 📍 {{ item.equipment.location.location_name }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><strong>{{ item.quantity }}</strong> รายการ</td>
+                                <td>{{ item.borrow_date.strftime('%d/%m/%Y %H:%M น.') }}</td>
+                                <td>
+                                    <strong>{{ item.due_date.strftime('%d/%m/%Y %H:%M น.') }}</strong>
+                                </td>
+                                <td>
+                                    {% if item.is_overdue %}
+                                        <span class="badge badge-danger">
+                                            ⚠️ เกินกำหนดส่ง (ค่าปรับ 100 บ./วัน)
+                                        </span>
+                                    {% else %}
+                                        <span class="badge badge-primary">
+                                            กำลังยืมปกติ
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                ไม่มีรายการอุปกรณ์ที่กำลังยืมอยู่ในขณะนี้
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Section 2: My Borrow Requests (ประวัติคำขอยืม) -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <span>📋</span> สถานะคำขอยืมของฉัน
+        </h3>
+        <span class="badge badge-secondary">{{ requests_list|length }} คำขอ</span>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if requests_list %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>รหัสคำขอ</th>
+                            <th>รายการอุปกรณ์</th>
+                            <th>จำนวน</th>
+                            <th>วันที่ยื่นคำขอ</th>
+                            <th>กำหนดวันคืนที่ขอ</th>
+                            <th>สถานะการพิจารณา</th>
+                            <th>ผู้พิจารณา / หมายเหตุ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests_list %}
+                            <tr>
+                                <td style="font-family: monospace;">#REQ-{{ req.request_id }}</td>
+                                <td>
+                                    <div style="font-weight: 600;">{{ req.equipment.name }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ req.purpose or 'ไม่ได้ระบุเหตุผล' }}</div>
+                                </td>
+                                <td>{{ req.quantity }} ชิ้น</td>
+                                <td>{{ req.request_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td>{{ req.expected_return_date.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <span class="badge {{ req.status_badge_class }}">
+                                        {{ req.status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if req.status == 'approved' %}
+                                        <span style="font-size: 0.8rem; color: var(--success);">
+                                            ✓ อนุมัติโดย {{ req.approver.full_name if req.approver else 'เจ้าหน้าที่' }}
+                                        </span>
+                                    {% elif req.status == 'rejected' %}
+                                        <div style="font-size: 0.8rem; color: var(--danger);">
+                                            ✕ ไม่อนุมัติ: {{ req.rejection_reason or 'ไม่ระบุเหตุผล' }}
+                                        </div>
+                                    {% else %}
+                                        <span style="font-size: 0.8rem; color: var(--warning);">
+                                            ⏳ รอเจ้าหน้าที่พิจารณา
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                ยังไม่มีประวัติการยื่นคำขอยืม
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Section 3: History of Completed Returns -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <span>📜</span> ประวัติการคืนอุปกรณ์ที่เสร็จสิ้นแล้ว
+        </h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if history_borrowings %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>รหัสยืม</th>
+                            <th>อุปกรณ์</th>
+                            <th>วันที่ยืม</th>
+                            <th>วันที่คืน</th>
+                            <th>สภาพอุปกรณ์ที่คืน</th>
+                            <th>ค่าปรับ / ใบเสร็จ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bw in history_borrowings %}
+                            <tr>
+                                <td style="font-family: monospace;">#{{ bw.borrow_id }}</td>
+                                <td style="font-weight: 600;">{{ bw.equipment.name }} ({{ bw.quantity }} ชิ้น)</td>
+                                <td>{{ bw.borrow_date.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ bw.return_record.return_date.strftime('%d/%m/%Y %H:%M') if bw.return_record else '-' }}</td>
+                                <td>
+                                    {% if bw.return_record %}
+                                        <span class="badge badge-secondary">{{ bw.return_record.condition_display }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if bw.return_record and bw.return_record.fine %}
+                                        <a href="{{ url_for('fine_receipt', fine_id=bw.return_record.fine.fine_id) }}" class="btn btn-secondary btn-sm">
+                                            🧾 ใบเสร็จ ({{ bw.return_record.fine.total_fine|round(2) }} บ.)
+                                        </a>
+                                    {% else %}
+                                        <span style="color: var(--text-muted); font-size: 0.8rem;">ไม่มีค่าปรับ</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                ยังไม่มีประวัติการส่งคืนอุปกรณ์
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

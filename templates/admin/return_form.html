@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}ใบรับคืนวัสดุ/ครุภัณฑ์ เลขที่ {{ ret.return_id }}{% endblock %}
+
+{% block extra_head %}
+<style>
+@media print {
+    .no-print { display: none !important; }
+    body { background: white !important; }
+    .app-layout { display: block !important; }
+    .app-sidebar { display: none !important; }
+    .app-main { margin: 0 !important; padding: 0 !important; }
+    .main-content { padding: 0 !important; }
+    .app-footer { display: none !important; }
+    .mobile-topbar { display: none !important; }
+    .permit-sheet { box-shadow: none !important; border: none !important; margin: 0 !important; }
+}
+.permit-sheet {
+    background: #fff; border: 2px solid #155724; border-radius: 4px;
+    padding: 2rem 2.5rem; font-family: 'IBM Plex Sans Thai', 'Prompt', sans-serif;
+    font-size: 0.92rem; color: #111; max-width: 794px; margin: 0 auto; line-height: 1.7;
+}
+.permit-school-header { text-align: center; margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 3px double #155724; }
+.permit-school-header h1 { font-size: 1.1rem; font-weight: 700; margin: 0 0 0.1rem 0; color: #155724; }
+.permit-school-header .sub-dept { font-size: 0.82rem; color: #555; }
+.permit-doc-title {
+    text-align: center; font-size: 1.15rem; font-weight: 700; margin: 1rem 0;
+    padding: 0.5rem; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc;
+    letter-spacing: 0.05em; color: #155724;
+}
+.permit-doc-number { display: flex; justify-content: flex-end; font-size: 0.82rem; margin-bottom: 1rem; gap: 1.5rem; }
+.permit-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 2rem; margin-bottom: 1.2rem; }
+.permit-info-item { display: flex; gap: 0.4rem; align-items: baseline; border-bottom: 1px dotted #ccc; padding-bottom: 0.25rem; }
+.permit-info-item .label { font-weight: 600; white-space: nowrap; min-width: 120px; font-size: 0.83rem; }
+.permit-info-item .value { flex: 1; font-size: 0.85rem; }
+.permit-table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem 0; font-size: 0.85rem; }
+.permit-table th { background: #155724; color: #fff; padding: 0.5rem 0.75rem; text-align: center; font-weight: 600; font-size: 0.82rem; }
+.permit-table td { border: 1px solid #bbb; padding: 0.5rem 0.75rem; vertical-align: top; }
+.permit-table tbody tr:nth-child(even) { background: #f7f7f7; }
+.permit-signature-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-top: 2.5rem; }
+.signature-box { text-align: center; padding-top: 0.5rem; }
+.signature-line { border-bottom: 1px solid #555; height: 48px; margin-bottom: 0.5rem; }
+.signature-box .sig-label { font-size: 0.78rem; font-weight: 600; color: #155724; margin-bottom: 0.15rem; }
+.signature-box .sig-name { font-size: 0.8rem; color: #333; height: 1.4em; }
+.signature-box .sig-date { font-size: 0.75rem; color: #666; margin-top: 0.25rem; }
+.signature-box .sig-dept { font-size: 0.72rem; color: #888; }
+.permit-footer-note { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid #ddd; font-size: 0.72rem; color: #888; text-align: center; }
+.section-title { font-weight: 700; font-size: 0.88rem; margin: 1rem 0 0.5rem 0; color: #155724; border-left: 4px solid #155724; padding-left: 0.6rem; }
+.condition-box { padding: 0.5rem 0.5rem; border: 1px solid #c3e6cb; background: #f0fff4; border-radius: 4px; margin-bottom: 0.5rem; }
+.condition-label { font-size: 0.78rem; font-weight: 600; color: #155724; display: block; margin-bottom: 0.2rem; }
+.condition-check { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.condition-check label { font-size: 0.82rem; display: flex; align-items: center; gap: 0.3rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 860px; margin: 0 auto;">
+    <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+        <a href="{{ url_for('admin_returns') }}" class="btn btn-secondary btn-sm">← ย้อนกลับ</a>
+        <button type="button" class="btn btn-success btn-sm" onclick="window.print()">🖨️ พิมพ์ใบรับคืน (Print)</button>
+    </div>
+
+    <div class="permit-sheet">
+        <!-- School Header -->
+        <div class="permit-school-header">
+            <div style="font-size:2rem; line-height:1; margin-bottom:0.4rem;">🏫</div>
+            <h1>วิทยาลัยการอาชีพหนองหาน</h1>
+            <div class="sub-dept">Nonghan Industrial and Community Education College</div>
+            <div class="sub-dept" style="margin-top:0.2rem;">งานพัสดุและสินทรัพย์ถาวร ฝ่ายบริหารทรัพยากร</div>
+        </div>
+
+        <div class="permit-doc-title">ใบรับคืนวัสดุ / ครุภัณฑ์</div>
+
+        <div class="permit-doc-number">
+            <span>เลขที่ใบรับคืน: <strong>RT-{{ '%05d' % ret.return_id }}</strong></span>
+            <span>วันที่รับคืน: <strong>{{ ret.return_date.strftime('%d/%m/%Y') }}</strong></span>
+        </div>
+
+        <!-- Returner Info -->
+        <div class="section-title">ข้อมูลผู้ส่งคืน</div>
+        <div class="permit-info-grid">
+            <div class="permit-info-item"><span class="label">ชื่อ-นามสกุล:</span><span class="value">{{ ret.borrowing.user.full_name }}</span></div>
+            <div class="permit-info-item"><span class="label">รหัสประจำตัว:</span><span class="value">{{ ret.borrowing.user.student_or_citizen_id }}</span></div>
+            <div class="permit-info-item"><span class="label">แผนก/สังกัด:</span><span class="value">{{ ret.borrowing.user.department or '-' }}</span></div>
+            <div class="permit-info-item"><span class="label">ประเภทผู้ยืม:</span><span class="value">{{ ret.borrowing.user.role_display }}</span></div>
+        </div>
+
+        <!-- Borrow Reference -->
+        <div class="section-title">ข้อมูลอ้างอิงการยืม</div>
+        <div class="permit-info-grid">
+            <div class="permit-info-item"><span class="label">เลขที่ใบอนุญาตยืม:</span><span class="value">BF-{{ '%05d' % ret.borrowing.borrow_id }}</span></div>
+            <div class="permit-info-item"><span class="label">วันที่ยืม:</span><span class="value">{{ ret.borrowing.borrow_date.strftime('%d/%m/%Y') }}</span></div>
+            <div class="permit-info-item"><span class="label">กำหนดคืน:</span><span class="value"><strong>{{ ret.borrowing.due_date.strftime('%d/%m/%Y') }}</strong></span></div>
+            <div class="permit-info-item"><span class="label">วันที่ส่งคืนจริง:</span><span class="value"><strong>{{ ret.return_date.strftime('%d/%m/%Y %H:%M') }} น.</strong></span></div>
+            {% if ret.late_days > 0 %}
+            <div class="permit-info-item" style="grid-column: 1 / -1;">
+                <span class="label">จำนวนวันที่เกินกำหนด:</span>
+                <span class="value" style="color: #c0392b; font-weight: 700;">{{ ret.late_days }} วัน (มีค่าปรับ)</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Equipment Details -->
+        <div class="section-title">รายการวัสดุ/ครุภัณฑ์ที่รับคืน</div>
+        <table class="permit-table">
+            <thead>
+                <tr>
+                    <th style="width:5%">ที่</th>
+                    <th style="width:15%">รหัสครุภัณฑ์</th>
+                    <th style="width:35%">ชื่อวัสดุ/ครุภัณฑ์</th>
+                    <th style="width:10%; text-align:center">จำนวน</th>
+                    <th style="width:20%">สภาพที่รับคืน</th>
+                    <th style="width:15%">หมายเหตุ</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="text-align:center">1</td>
+                    <td style="font-family:monospace; font-size:0.78rem">{{ ret.borrowing.equipment.equipment_code }}</td>
+                    <td><strong>{{ ret.borrowing.equipment.name }}</strong></td>
+                    <td style="text-align:center; font-weight:700">{{ ret.borrowing.quantity }}</td>
+                    <td style="font-weight:600; color: {% if ret.condition_status == 'normal' %}#155724{% elif ret.condition_status == 'damaged' %}#c0392b{% else %}#856404{% endif %}">
+                        {{ ret.condition_display }}
+                    </td>
+                    <td style="font-size:0.78rem">
+                        {% if ret.fine %}{{ ret.fine.status_display }}{% else %}-{% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Condition Check -->
+        <div class="section-title">ผลการตรวจสอบสภาพวัสดุ/ครุภัณฑ์</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.2rem;">
+            <div class="condition-box">
+                <span class="condition-label">สภาพวัสดุ/ครุภัณฑ์</span>
+                <div class="condition-check">
+                    <label><input type="checkbox" {% if ret.condition_status == 'normal' %}checked{% endif %}> สมบูรณ์ปกติ</label>
+                    <label><input type="checkbox" {% if ret.condition_status == 'damaged' %}checked{% endif %}> ชำรุดเสียหาย</label>
+                    <label><input type="checkbox" {% if ret.condition_status == 'lost' %}checked{% endif %}> สูญหาย</label>
+                </div>
+            </div>
+            <div class="condition-box">
+                <span class="condition-label">การคืนตามกำหนด</span>
+                <div class="condition-check">
+                    <label><input type="checkbox" {% if ret.late_days == 0 %}checked{% endif %}> คืนตามกำหนด</label>
+                    <label><input type="checkbox" {% if ret.late_days > 0 %}checked{% endif %}> เกินกำหนด {{ ret.late_days }} วัน</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fine Summary if applicable -->
+        {% if ret.fine %}
+        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.85rem;">
+            <strong style="color: #856404;">💰 สรุปค่าปรับ</strong>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; margin-top: 0.5rem;">
+                <span>ค่าปรับล่าช้า:</span><span><strong>{{ ret.fine.late_fine|round(2) }} บาท</strong></span>
+                <span>ค่าชดเชยความเสียหาย:</span><span><strong>{{ ret.fine.damage_fine|round(2) }} บาท</strong></span>
+                <span style="color: #c0392b; font-weight: 700;">รวมค่าปรับทั้งสิ้น:</span>
+                <span style="color: #c0392b; font-weight: 700;">{{ ret.fine.total_fine|round(2) }} บาท</span>
+                <span>สถานะการชำระ:</span><span><strong>{{ ret.fine.status_display }}</strong></span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Signatures -->
+        <div class="permit-signature-row">
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="sig-label">ลายมือชื่อผู้ส่งคืน</div>
+                <div class="sig-name">({{ ret.borrowing.user.full_name }})</div>
+                <div class="sig-dept">{{ ret.borrowing.user.role_display }}</div>
+                <div class="sig-dept">{{ ret.borrowing.user.department or '' }}</div>
+                <div class="sig-date">วันที่ ......../........../..........[…]</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="sig-label">ลายมือชื่อเจ้าหน้าที่ผู้รับคืน</div>
+                <div class="sig-name">({{ ret.receiver.full_name }})</div>
+                <div class="sig-dept">เจ้าหน้าที่พัสดุ / ผู้รับผิดชอบคลัง</div>
+                <div class="sig-date">วันที่ ......../........../..........…</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; padding: 0.5rem; border: 1px dashed #ccc; font-size: 0.8rem; color: #555;">
+            <strong>หมายเหตุ / ข้อสังเกตเพิ่มเติม:</strong>
+            <div style="height: 40px; border-bottom: 1px dotted #ccc; margin-top: 0.5rem;"></div>
+        </div>
+
+        <div class="permit-footer-note">
+            เอกสารนี้ออกโดยระบบสารสนเทศบริการยืม-คืนวัสดุและครุภัณฑ์ วิทยาลัยการอาชีพหนองหาน |
+            พิมพ์เมื่อ: {{ now.strftime('%d/%m/%Y %H:%M') }} น. | เลขที่อ้างอิงระบบ: RT-{{ '%05d' % ret.return_id }}
+        </div>
+    </div>
+</div>
+{% endblock %}

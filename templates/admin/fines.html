@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}ทะเบียนค่าปรับและใบเสร็จ{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>🧾</span> ทะเบียนค่าปรับและใบเสร็จ (Fines & Receipts)
+        </h1>
+        <p class="page-subtitle">ตรวจสอบรายการค่าปรับคืนล่าช้า ค่าชำรุดเสียหาย และสถานะการชำระเงิน</p>
+    </div>
+    <div style="background: var(--bg-subtle); padding: 0.5rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem;">
+        ⚙️ อัตราค่าปรับปัจจุบัน: <strong>{{ fine_rate.amount_per_day if fine_rate else 100 }} บาท/วัน</strong>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        {% if fines_list %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>เลขที่ใบเสร็จ</th>
+                            <th>ผู้ยืม / ชำระเงิน</th>
+                            <th>รายการอุปกรณ์</th>
+                            <th>ค่าปรับคืนช้า</th>
+                            <th>ค่าเสียหาย</th>
+                            <th>ยอดรวมทั้งสิ้น</th>
+                            <th>วิธีชำระ</th>
+                            <th>สถานะ</th>
+                            <th style="text-align: right;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in fines_list %}
+                            <tr>
+                                <td style="font-family: monospace; font-weight: 600;">
+                                    {{ f.receipt_number }}
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600;">{{ f.return_record.borrowing.user.full_name }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ f.return_record.borrowing.user.student_or_citizen_id }}</div>
+                                </td>
+                                <td>{{ f.return_record.borrowing.equipment.name }}</td>
+                                <td>{{ f.late_fine|round(2) }} ฿</td>
+                                <td>{{ f.damage_fine|round(2) }} ฿</td>
+                                <td>
+                                    <strong style="color: var(--danger);">{{ f.total_fine|round(2) }} ฿</strong>
+                                </td>
+                                <td>
+                                    <span style="font-size: 0.8rem;">
+                                        {{ '💵 เงินสด' if f.payment_method == 'cash' else '💳 โอนเงิน' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge {{ f.status_badge_class }}">
+                                        {{ f.status_display }}
+                                    </span>
+                                </td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                    {% if f.payment_status == 'unpaid' %}
+                                        <form action="{{ url_for('pay_fine', fine_id=f.fine_id) }}" method="POST" style="display: inline-block;">
+                                            <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('ยืนยันบันทึกรับเงินค่าปรับ?')">
+                                                💵 ชำระเงิน
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    <a href="{{ url_for('fine_receipt', fine_id=f.fine_id) }}" class="btn btn-secondary btn-sm" target="_blank">
+                                        🖨️ พิมพ์ใบเสร็จ
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                ไม่มีรายการค่าปรับในระบบ
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

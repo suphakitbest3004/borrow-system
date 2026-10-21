@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}ใบรับเข้า {{ receipt.receipt_number }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>📄</span> ใบรับเข้าเลขที่ {{ receipt.receipt_number }}
+        </h1>
+        <p class="page-subtitle">รายละเอียดการรับเข้าวัสดุ/ครุภัณฑ์</p>
+    </div>
+    <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+        <a href="{{ url_for('goods_receiving') }}" class="btn btn-secondary btn-sm">
+            ← กลับหน้ารับเข้า
+        </a>
+        <a href="{{ url_for('goods_receiving_print', receipt_id=receipt.receipt_id) }}" class="btn btn-primary btn-sm" target="_blank">
+            🖨️ พิมพ์เอกสาร
+        </a>
+        {% if current_user and current_user.role == 'admin' %}
+        <form method="POST" action="{{ url_for('goods_receiving_delete', receipt_id=receipt.receipt_id) }}" onsubmit="return confirm('⚠️ ยืนยันลบใบรับเข้าเลขที่ {{ receipt.receipt_number }}?\n\nระบบจะคืนค่าสต็อกที่อัปเดตไปแล้วอัตโนมัติ\nการกระทำนี้ไม่สามารถย้อนกลับได้!');" style="display: inline;">
+            <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--danger);">
+                🗑️ ลบใบรับเข้า
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Receipt Info Card -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body">
+        <h3 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--primary);">📋 ข้อมูลใบรับเข้า</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">เลขที่ใบรับ</div>
+                <div style="font-weight: 700; font-size: 1.1rem; color: var(--primary);">{{ receipt.receipt_number }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">ประเภทการรับเข้า</div>
+                <div><span class="badge {{ receipt.receipt_type_badge }}">{{ receipt.receipt_type_short }}</span></div>
+            </div>
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">วันที่รับเข้า</div>
+                <div style="font-weight: 600;">{{ receipt.received_date.strftime('%d/%m/%Y %H:%M น.') if receipt.received_date else '-' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">ผู้รับเข้า</div>
+                <div style="font-weight: 600;">{{ receipt.receiver.full_name if receipt.receiver else '-' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">แหล่งที่มา / ผู้จัดจำหน่าย</div>
+                <div>{{ receipt.supplier_name or '-' }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">เอกสารอ้างอิง</div>
+                <div>{{ receipt.document_ref or '-' }}</div>
+            </div>
+            {% if receipt.po_id and receipt.purchase_order %}
+            <div>
+                <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">ใบสั่งซื้อ (PO)</div>
+                <div>
+                    <a href="{{ url_for('purchase_order_detail', po_id=receipt.po_id) }}" style="color: var(--primary); font-weight: 600;">
+                        {{ receipt.purchase_order.po_number }}
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            {% if receipt.note %}
+            <div style="grid-column: 1 / -1;">
+                <div style="font-size: 0.8rem; color: var(--text-tertiary); margin-bottom: 0.25rem;">หมายเหตุ</div>
+                <div>{{ receipt.note }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="stat-grid" style="margin-bottom: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+    <div class="stat-card">
+        <div>
+            <div class="stat-value">{{ receipt.total_items }}</div>
+            <div class="stat-label">จำนวนรายการ</div>
+        </div>
+        <div class="stat-icon" style="color: var(--primary);">📋</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: var(--success);">{{ receipt.total_quantity }}</div>
+            <div class="stat-label">จำนวนรวม (ชิ้น)</div>
+        </div>
+        <div class="stat-icon" style="color: var(--success);">📦</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            {% set updated_count = receipt.items | selectattr('inventory_updated') | list | length %}
+            <div class="stat-value" style="color: var(--accent-blue);">{{ updated_count }}</div>
+            <div class="stat-label">อัปเดตสต็อกแล้ว</div>
+        </div>
+        <div class="stat-icon" style="color: var(--accent-blue);">✅</div>
+    </div>
+</div>
+
+<!-- Items Detail Table -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        <div style="padding: 1rem 1.25rem 0;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--primary);">📦 รายการวัสดุ/ครุภัณฑ์ที่รับเข้า</h3>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 45px;">#</th>
+                        <th>ชื่อรายการ</th>
+                        <th>รหัสพัสดุ</th>
+                        <th style="text-align: center;">จำนวน</th>
+                        <th>หน่วย</th>
+                        <th>สภาพ</th>
+                        <th>ผูกกับรายการในระบบ</th>
+                        <th style="text-align: center;">สต็อกอัปเดต</th>
+                        <th>หมายเหตุ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in receipt.items %}
+                    <tr>
+                        <td style="color: var(--text-secondary); text-align: center;">{{ loop.index }}</td>
+                        <td style="font-weight: 600;">{{ item.item_name }}</td>
+                        <td>{{ item.item_code or '-' }}</td>
+                        <td style="text-align: center; font-weight: 700; color: var(--success);">{{ item.quantity }}</td>
+                        <td>{{ item.unit or 'ชิ้น' }}</td>
+                        <td>{{ item.condition_display }}</td>
+                        <td>
+                            {% if item.equipment %}
+                                <span style="color: var(--primary); font-weight: 500;">
+                                    {{ item.equipment.equipment_code }} - {{ item.equipment.name }}
+                                </span>
+                                <br>
+                                <span style="font-size: 0.8rem; color: var(--text-tertiary);">
+                                    (คงเหลือปัจจุบัน: {{ item.equipment.available_quantity }}/{{ item.equipment.total_quantity }})
+                                </span>
+                            {% else %}
+                                <span style="color: var(--text-tertiary);">- ไม่ได้ผูก -</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if item.inventory_updated %}
+                                <span class="badge badge-success" style="font-size: 0.75rem;">✅ อัปเดตแล้ว</span>
+                            {% else %}
+                                <span class="badge badge-secondary" style="font-size: 0.75rem;">— ไม่ได้ผูก</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">{{ item.note or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .app-sidebar, .mobile-topbar, .page-header > div:last-child, .sidebar-backdrop { display: none !important; }
+    .app-content { margin-left: 0 !important; padding: 1rem !important; }
+    .card { box-shadow: none !important; border: 1px solid #ddd !important; }
+    .btn { display: none !important; }
+}
+</style>
+{% endblock %}

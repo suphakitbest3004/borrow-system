@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+
+{% block title %}ใบสั่งซื้อเลขที่ {{ po.po_number }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="align-items: flex-start;">
+    <div>
+        <div style="margin-bottom: 0.35rem;">
+            <a href="{{ url_for('purchase_orders_list') }}" style="text-decoration: none; font-size: 0.85rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span>←</span> กลับไปประวัติการสั่งซื้อ
+            </a>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <h1 class="page-title" style="margin-bottom: 0;">
+                <span>🛒</span> ใบสั่งซื้อ {{ po.po_number }}
+            </h1>
+            <span class="badge {{ po.status_badge_class }}" style="font-size: 0.85rem; padding: 0.3rem 0.75rem;">
+                {{ po.status_display }}
+            </span>
+        </div>
+        <p class="page-subtitle">วันที่สั่งซื้อ: {{ po.order_date.strftime('%d/%m/%Y %H:%M') }} น. • ผู้จัดทำ: {{ po.creator.full_name }}</p>
+    </div>
+    <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="window.print()">
+            <span>🖨️</span> พิมพ์ใบสั่งซื้อ
+        </button>
+        <a href="{{ url_for('purchase_order_new', reorder_from=po.po_id) }}" class="btn btn-secondary btn-sm">
+            <span>🔄</span> สั่งซื้อซ้ำจากรายการนี้
+        </a>
+        <a href="{{ url_for('purchase_order_new') }}" class="btn btn-primary btn-sm">
+            <span>➕</span> สร้างใบสั่งซื้อใหม่
+        </a>
+    </div>
+</div>
+
+<!-- Purchase Order Document Container -->
+<div class="card" id="printablePurchaseOrder" style="margin-bottom: 2rem;">
+    <!-- Document Header -->
+    <div style="padding: 2rem 2.25rem 1.5rem; border-bottom: 2px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.35rem;">
+                <div style="font-size: 2rem;">📦</div>
+                <div>
+                    <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: var(--text-main);">วิทยาลัยการอาชีพหนองหาน</h2>
+                    <div style="font-size: 0.86rem; color: var(--text-muted);">ระบบงานพัสดุและครุภัณฑ์ แผนกวิชาช่างอิเล็กทรอนิกส์</div>
+                </div>
+            </div>
+            <div style="font-size: 0.84rem; color: var(--text-body); margin-top: 0.5rem; line-height: 1.6;">
+                ต.หนองหาน อ.หนองหาน จ.อุดรธานี 41130<br>
+                โทรศัพท์: 042-261-244 • อีเมล: nonghan.icc@vec.mail.go.th
+            </div>
+        </div>
+
+        <div style="text-align: right; min-width: 200px;">
+            <div style="font-size: 1.4rem; font-weight: 800; font-family: var(--font-heading); color: var(--primary); letter-spacing: 0.05em;">
+                ใบสั่งซื้อพัสดุ / ครุภัณฑ์
+            </div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">PURCHASE ORDER</div>
+            <div style="background: var(--bg-subtle); padding: 0.65rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border); display: inline-block; text-align: left; font-size: 0.85rem;">
+                <div>เลขที่: <strong style="font-family: var(--font-numeric); color: var(--primary);">{{ po.po_number }}</strong></div>
+                <div>วันที่: <span style="font-family: var(--font-numeric);">{{ po.order_date.strftime('%d/%m/%Y') }}</span></div>
+                {% if po.expected_delivery_date %}
+                    <div>กำหนดส่งมอบ: <span style="font-family: var(--font-numeric);">{{ po.expected_delivery_date.strftime('%d/%m/%Y') }}</span></div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Vendor and Buyer Details Section -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; padding: 1.75rem 2.25rem; border-bottom: 1px solid var(--border); background: #fdfdfd;">
+        <!-- Supplier Info (Requirement: ดูข้อมูลบริษัทที่สั่ง และแก้ไขได้) -->
+        <div style="background: white; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-xs);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                <div style="font-weight: 700; color: var(--text-main); font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <span>🏢</span> ข้อมูลบริษัทผู้จัดจำหน่าย (คู่ค้า)
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.76rem;" onclick="openModal('editSupplierModal')">
+                    <span>✏️</span> แก้ไขข้อมูล
+                </button>
+            </div>
+            <div style="font-weight: 700; font-size: 1.05rem; color: var(--primary); margin-bottom: 0.35rem;">
+                {{ po.supplier.company_name }}
+            </div>
+            <div style="font-size: 0.86rem; color: var(--text-body); line-height: 1.6;">
+                <div><strong>ผู้ติดต่อ:</strong> {{ po.supplier.contact_name or '-' }}</div>
+                <div><strong>เบอร์โทรศัพท์:</strong> {{ po.supplier.phone or '-' }}</div>
+                <div><strong>อีเมล:</strong> {{ po.supplier.email or '-' }}</div>
+                <div><strong>เลขประจำตัวผู้เสียภาษี:</strong> {{ po.supplier.tax_id or '-' }}</div>
+                <div style="margin-top: 0.35rem; color: var(--text-muted);">
+                    <strong>ที่อยู่:</strong> {{ po.supplier.address or '-' }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Buyer / Purchaser Info -->
+        <div style="background: white; border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; box-shadow: var(--shadow-xs);">
+            <div style="font-weight: 700; color: var(--text-main); font-size: 0.95rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
+                <span>👤</span> ข้อมูลเจ้าหน้าที่ผู้จัดทำคำสั่งซื้อ
+            </div>
+            <div style="font-weight: 700; font-size: 1.05rem; color: var(--primary); margin-bottom: 0.35rem;">
+                {{ po.creator.full_name }}
+            </div>
+            <div style="font-size: 0.86rem; color: var(--text-body); line-height: 1.6;">
+                <div><strong>ตำแหน่ง:</strong> {{ po.creator.role_display }}</div>
+                <div><strong>สังกัดแผนก:</strong> {{ po.creator.department or 'แผนกวิชาช่างอิเล็กทรอนิกส์' }}</div>
+                <div><strong>เบอร์โทรศัพท์:</strong> {{ po.creator.phone_number or '-' }}</div>
+                <div><strong>อีเมล:</strong> {{ po.creator.email }}</div>
+                <div style="margin-top: 0.35rem; color: var(--text-muted);">
+                    <strong>สถานะปัจจุบัน:</strong> <span class="badge {{ po.status_badge_class }}">{{ po.status_display }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div style="padding: 1.5rem 2.25rem 0;">
+        <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>📋</span> รายการพัสดุ / ครุภัณฑ์ที่สั่งซื้อ
+            <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ po.items|length }} รายการ ({{ po.items_count }} ชิ้น)</span>
+        </h3>
+        <div class="table-responsive" style="border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;">
+            <table class="table" style="margin-bottom: 0;">
+                <thead>
+                    <tr>
+                        <th style="width: 50px; text-align: center;">ลำดับ</th>
+                        <th style="width: 140px;">รหัส / รุ่น</th>
+                        <th>ชื่อรายการวัสดุและครุภัณฑ์</th>
+                        <th style="width: 100px; text-align: center;">จำนวน</th>
+                        <th style="width: 90px; text-align: center;">หน่วยนับ</th>
+                        <th style="width: 130px; text-align: right;">ราคาต่อหน่วย (฿)</th>
+                        <th style="width: 140px; text-align: right;">ราคารวม (฿)</th>
+                        <th style="width: 180px;">หมายเหตุ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in po.items %}
+                        <tr>
+                            <td style="text-align: center; color: var(--text-muted); font-weight: 600;">
+                                {{ loop.index }}
+                            </td>
+                            <td>
+                                <span style="font-family: var(--font-numeric); font-weight: 600; font-size: 0.82rem; color: var(--text-muted);">
+                                    {{ item.item_code or '-' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="font-weight: 600; color: var(--text-main);">
+                                    {{ item.item_name }}
+                                </div>
+                                {% if item.equipment %}
+                                    <div style="font-size: 0.76rem; color: var(--success); display: inline-flex; align-items: center; gap: 0.25rem;">
+                                        <span>🔗</span> เชื่อมโยงกับคลังอุปกรณ์: {{ item.equipment.equipment_code }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center; font-family: var(--font-numeric); font-weight: 700;">
+                                {{ item.quantity }}
+                            </td>
+                            <td style="text-align: center; color: var(--text-muted);">
+                                {{ item.unit or 'ชิ้น' }}
+                            </td>
+                            <td style="text-align: right; font-family: var(--font-numeric);">
+                                {{ "{:,.2f}".format(item.unit_price) }}
+                            </td>
+                            <td style="text-align: right; font-family: var(--font-numeric); font-weight: 700; color: var(--text-main);">
+                                {{ "{:,.2f}".format(item.total_price) }}
+                            </td>
+                            <td style="font-size: 0.82rem; color: var(--text-muted);">
+                                {{ item.notes or '-' }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="background: var(--bg-subtle);">
+                        <td colspan="3" style="text-align: right; font-weight: 700; font-family: var(--font-heading); padding: 1rem 1.25rem;">
+                            ยอดรวมสุทธิทั้งสิ้น (Grand Total):
+                        </td>
+                        <td style="text-align: center; font-weight: 700; font-family: var(--font-numeric); font-size: 1.05rem;">
+                            {{ po.items_count }}
+                        </td>
+                        <td></td>
+                        <td></td>
+                        <td style="text-align: right; font-weight: 800; font-family: var(--font-numeric); font-size: 1.25rem; color: var(--primary);">
+                            ฿{{ "{:,.2f}".format(po.total_amount) }}
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Notes & Signatures Section -->
+    <div style="padding: 1.75rem 2.25rem 2rem;">
+        {% if po.note %}
+            <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem 1.25rem; margin-bottom: 2rem;">
+                <strong style="color: var(--text-main); font-size: 0.88rem;">หมายเหตุประกอบการสั่งซื้อ:</strong>
+                <p style="margin: 0.35rem 0 0; font-size: 0.85rem; color: var(--text-body); line-height: 1.6;">{{ po.note }}</p>
+            </div>
+        {% endif %}
+
+        <!-- Signature Boxes for Official Printing -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2rem; margin-top: 2.5rem; text-align: center;">
+            <div style="border-top: 1px dashed var(--border-dark); padding-top: 0.85rem;">
+                <div style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 0.35rem;">(ลงชื่อ)........................................................</div>
+                <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">( {{ po.creator.full_name }} )</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">เจ้าหน้าที่ผู้จัดทำคำสั่งซื้อ</div>
+            </div>
+            <div style="border-top: 1px dashed var(--border-dark); padding-top: 0.85rem;">
+                <div style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 0.35rem;">(ลงชื่อ)........................................................</div>
+                <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">( ........................................................ )</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">หัวหน้างานพัสดุ / ผู้เห็นชอบ</div>
+            </div>
+            <div style="border-top: 1px dashed var(--border-dark); padding-top: 0.85rem;">
+                <div style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 0.35rem;">(ลงชื่อ)........................................................</div>
+                <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">( ........................................................ )</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">ผู้อำนวยการวิทยาลัยการอาชีพหนองหาน</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Management Actions Card (Admin/Staff Controls) -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header" style="padding: 1.15rem 1.35rem; display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-weight: 700; font-family: var(--font-heading); font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>⚙️</span> จัดการสถานะและการตรวจรับพัสดุ
+        </div>
+        <span class="badge {{ po.status_badge_class }}">ปัจจุบัน: {{ po.status_display }}</span>
+    </div>
+    <div class="card-body" style="padding: 1.35rem;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+            <div>
+                {% if po.status == 'pending' %}
+                    <div style="color: var(--warning); font-weight: 600; font-size: 0.92rem; margin-bottom: 0.25rem;">
+                        ⏳ สถานะ: รอรับพัสดุจากผู้จัดจำหน่าย
+                    </div>
+                    <div style="font-size: 0.82rem; color: var(--text-muted);">
+                        เมื่อบริษัทส่งมอบพัสดุเรียบร้อย ให้กดปุ่ม "ตรวจรับเข้าคลัง" เพื่อปรับสถานะและเพิ่มจำนวนพัสดุเข้าคลังโดยอัตโนมัติ
+                    </div>
+                {% elif po.status == 'received' %}
+                    <div style="color: var(--success); font-weight: 600; font-size: 0.92rem; margin-bottom: 0.25rem;">
+                        ✅ ตรวจรับพัสดุเข้าคลังเรียบร้อยแล้ว
+                    </div>
+                    <div style="font-size: 0.82rem; color: var(--text-muted);">
+                        รายการพัสดุในใบสั่งซื้อนี้ได้ถูกบันทึกและตรวจรับเข้าสู่ระบบพัสดุของวิทยาลัยแล้ว
+                    </div>
+                {% else %}
+                    <div style="color: var(--danger); font-weight: 600; font-size: 0.92rem;">
+                        ❌ คำสั่งซื้อนี้ถูกยกเลิกแล้ว
+                    </div>
+                {% endif %}
+            </div>
+
+            <div style="display: flex; gap: 0.65rem; flex-wrap: wrap;">
+                {% if po.status == 'pending' %}
+                    <form method="POST" action="{{ url_for('purchase_order_update_status', po_id=po.po_id) }}" style="display: inline-flex; align-items: center; gap: 0.5rem;" onsubmit="return confirm('ยืนยันการตรวจรับพัสดุทั้งหมดเข้าคลังระบบ?');">
+                        <input type="hidden" name="status" value="received">
+                        <label style="font-size: 0.82rem; color: var(--text-body); display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" name="update_inventory" value="1" checked>
+                            เพิ่มจำนวนสต็อกพัสดุในคลังอัตโนมัติ
+                        </label>
+                        <button type="submit" class="btn btn-primary btn-sm" style="background: var(--success); border-color: var(--success);">
+                            <span>📥</span> บันทึกตรวจรับพัสดุเข้าคลัง
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('purchase_order_update_status', po_id=po.po_id) }}" style="display: inline;" onsubmit="return confirm('ยืนยันการยกเลิกคำสั่งซื้อนี้?');">
+                        <input type="hidden" name="status" value="cancelled">
+                        <button type="submit" class="btn btn-secondary btn-sm" style="color: var(--danger);">
+                            <span>✕</span> ยกเลิกคำสั่งซื้อ
+                        </button>
+                    </form>
+                {% elif po.status == 'received' %}
+                    <form method="POST" action="{{ url_for('purchase_order_update_status', po_id=po.po_id) }}" style="display: inline;" onsubmit="return confirm('เปลี่ยนกลับเป็นสถานะรอรับพัสดุ?');">
+                        <input type="hidden" name="status" value="pending">
+                        <button type="submit" class="btn btn-secondary btn-sm">
+                            ย้อนกลับเป็นรอรับพัสดุ
+                        </button>
+                    </form>
+                {% else %}
+                    <form method="POST" action="{{ url_for('purchase_order_update_status', po_id=po.po_id) }}" style="display: inline;">
+                        <input type="hidden" name="status" value="pending">
+                        <button type="submit" class="btn btn-secondary btn-sm">
+                            เปิดคำสั่งซื้อใหม่อีกครั้ง
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: แก้ไขข้อมูลบริษัทคู่ค้า (Edit Supplier Modal)
+     ========================================================================= -->
+<div class="modal-backdrop" id="editSupplierModal">
+    <div class="modal-box" style="max-width: 580px;">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <span>✏️</span> แก้ไขข้อมูลบริษัท {{ po.supplier.company_name }}
+            </h3>
+            <button type="button" class="modal-close" onclick="closeModal('editSupplierModal')">✕</button>
+        </div>
+        <form method="POST" action="{{ url_for('supplier_edit', supplier_id=po.supplier.supplier_id) }}">
+            <div class="modal-body" style="padding: 1.35rem;">
+                <div class="form-group">
+                    <label class="form-label">ชื่อบริษัท / ร้านค้า *</label>
+                    <input type="text" name="company_name" class="form-control" value="{{ po.supplier.company_name }}" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ชื่อผู้ติดต่อ</label>
+                        <input type="text" name="contact_name" class="form-control" value="{{ po.supplier.contact_name or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เบอร์โทรศัพท์</label>
+                        <input type="text" name="phone" class="form-control" value="{{ po.supplier.phone or '' }}">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">อีเมล</label>
+                        <input type="email" name="email" class="form-control" value="{{ po.supplier.email or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เลขประจำตัวผู้เสียภาษี</label>
+                        <input type="text" name="tax_id" class="form-control" value="{{ po.supplier.tax_id or '' }}">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">ที่อยู่บริษัท</label>
+                    <textarea name="address" class="form-control" rows="2">{{ po.supplier.address or '' }}</textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 1rem 1.35rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('editSupplierModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <span>💾</span> บันทึกการแก้ไข
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+}
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+}
+</script>
+
+<style>
+@media print {
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    .app-sidebar, .app-header, .app-footer, .page-header, .card:last-child {
+        display: none !important;
+    }
+    .app-main {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .main-content {
+        padding: 0 !important;
+    }
+    #printablePurchaseOrder {
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
+</style>
+{% endblock %}

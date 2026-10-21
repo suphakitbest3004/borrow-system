@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}การสั่งซื้อวัสดุและครุภัณฑ์{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>🛒</span> การสั่งซื้อวัสดุและครุภัณฑ์
+        </h1>
+        <p class="page-subtitle">จัดการคำสั่งซื้อ ติดตามสถานะ ดูประวัติการจัดซื้อ และบริหารข้อมูลบริษัทคู่ค้าผู้จัดจำหน่าย</p>
+    </div>
+    <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+        <a href="{{ url_for('purchase_order_new') }}" class="btn btn-primary btn-sm">
+            <span>➕</span> สั่งซื้อวัสดุ/ครุภัณฑ์ใหม่
+        </a>
+        <a href="{{ url_for('suppliers_list') }}" class="btn btn-secondary btn-sm">
+            <span>🏢</span> ข้อมูลบริษัทคู่ค้า ({{ suppliers_count }})
+        </a>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="stat-grid" style="margin-bottom: 1.5rem;">
+    <div class="stat-card">
+        <div>
+            <div class="stat-value">{{ total_orders_count }}</div>
+            <div class="stat-label">ใบสั่งซื้อทั้งหมด</div>
+        </div>
+        <div class="stat-icon" style="color: var(--primary);">📋</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: var(--warning);">{{ pending_count }}</div>
+            <div class="stat-label">รอตรวจรับพัสดุเข้าคลัง</div>
+        </div>
+        <div class="stat-icon" style="color: var(--warning);">⏳</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: var(--success);">{{ received_count }}</div>
+            <div class="stat-label">ตรวจรับเข้าคลังเรียบร้อยแล้ว</div>
+        </div>
+        <div class="stat-icon" style="color: var(--success);">✅</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: var(--accent-blue);">฿{{ "{:,.2f}".format(total_spend) }}</div>
+            <div class="stat-label">มูลค่าสั่งซื้อรวมทั้งสิ้น</div>
+        </div>
+        <div class="stat-icon" style="color: var(--accent-blue);">💰</div>
+    </div>
+</div>
+
+<!-- Search & Status Filter -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding: 1rem 1.25rem;">
+        <form method="GET" action="{{ url_for('purchase_orders_list') }}" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 2; min-width: 240px;">
+                <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="ค้นหาเลขที่ PO หรือชื่อบริษัทคู่ค้า...">
+            </div>
+            <div style="flex: 1; min-width: 180px;">
+                <select name="status" class="form-control" onchange="this.form.submit()">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>ทุกสถานะ (ทั้งหมด)</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>รอรับพัสดุ</option>
+                    <option value="received" {% if status_filter == 'received' %}selected{% endif %}>ตรวจรับเข้าคลังแล้ว</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>ยกเลิกคำสั่งซื้อ</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <span>🔍</span> ค้นหา
+            </button>
+            {% if search_query or status_filter != 'all' %}
+                <a href="{{ url_for('purchase_orders_list') }}" class="btn btn-secondary btn-sm">ล้างตัวกรอง</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Orders Table -->
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.15rem 1.35rem;">
+        <div style="font-weight: 700; font-family: var(--font-heading); font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>📑</span> ประวัติการสั่งซื้อพัสดุและครุภัณฑ์
+            <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ orders|length }} รายการ</span>
+        </div>
+        <div>
+            <a href="{{ url_for('purchase_order_new') }}" class="btn btn-primary btn-sm">
+                <span>+</span> สั่งซื้อใหม่
+            </a>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if orders %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">เลขที่ใบสั่งซื้อ</th>
+                            <th style="width: 110px;">วันที่สั่ง</th>
+                            <th>บริษัทคู่ค้า / ผู้จัดจำหน่าย</th>
+                            <th style="width: 120px; text-align: center;">จำนวนรายการ</th>
+                            <th style="text-align: right; width: 130px;">ยอดรวมสุทธิ</th>
+                            <th style="width: 130px;">ผู้สั่งซื้อ</th>
+                            <th style="width: 130px; text-align: center;">สถานะ</th>
+                            <th style="width: 160px; text-align: center;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for po in orders %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url_for('purchase_order_detail', po_id=po.po_id) }}" style="font-family: var(--font-numeric); font-weight: 700; text-decoration: none; color: var(--accent-blue);">
+                                        {{ po.po_number }}
+                                    </a>
+                                </td>
+                                <td style="font-size: 0.82rem; color: var(--text-muted); font-family: var(--font-numeric);">
+                                    {{ po.order_date.strftime('%d/%m/%Y') }}
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600; color: var(--text-main);">
+                                        {{ po.supplier.company_name }}
+                                    </div>
+                                    <div style="font-size: 0.78rem; color: var(--text-muted);">
+                                        {% if po.supplier.contact_name %}ผู้ติดต่อ: {{ po.supplier.contact_name }}{% endif %}
+                                        {% if po.supplier.phone %} • 📞 {{ po.supplier.phone }}{% endif %}
+                                    </div>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="badge badge-secondary" style="font-family: var(--font-numeric); font-weight: 600;">
+                                        {{ po.items|length }} รายการ ({{ po.items_count }} ชิ้น)
+                                    </span>
+                                </td>
+                                <td style="text-align: right; font-family: var(--font-numeric); font-weight: 700; color: var(--text-main);">
+                                    ฿{{ "{:,.2f}".format(po.total_amount) }}
+                                </td>
+                                <td>
+                                    <span style="font-size: 0.85rem;">{{ po.creator.full_name }}</span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="badge {{ po.status_badge_class }}">
+                                        {{ po.status_display }}
+                                    </span>
+                                </td>
+                                <td style="text-align: center;">
+                                    <div style="display: flex; gap: 0.4rem; justify-content: center;">
+                                        <a href="{{ url_for('purchase_order_detail', po_id=po.po_id) }}" class="btn btn-secondary btn-sm" title="ดูรายละเอียดใบสั่งซื้อ" style="padding: 0.3rem 0.55rem; font-size: 0.78rem;">
+                                            <span>👁️</span> ดูข้อมูล
+                                        </a>
+                                        <a href="{{ url_for('purchase_order_new', reorder_from=po.po_id) }}" class="btn btn-secondary btn-sm" title="สั่งซื้อซ้ำจากรายการนี้" style="padding: 0.3rem 0.55rem; font-size: 0.78rem;">
+                                            <span>🔄</span> สั่งซ้ำ
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);">
+                <div style="font-size: 3rem; margin-bottom: 0.75rem;">📦</div>
+                <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">ไม่พบรายการสั่งซื้อ</h3>
+                <p style="font-size: 0.88rem; margin-bottom: 1.25rem;">
+                    {% if search_query or status_filter != 'all' %}
+                        ไม่พบใบสั่งซื้อที่ตรงกับเงื่อนไขการค้นหา ลองเปลี่ยนคำค้นหาหรือตัวกรอง
+                    {% else %}
+                        ยังไม่มีประวัติการสั่งซื้อพัสดุและครุภัณฑ์ในระบบ เริ่มต้นสร้างใบสั่งซื้อฉบับแรกได้ทันที
+                    {% endif %}
+                </p>
+                <a href="{{ url_for('purchase_order_new') }}" class="btn btn-primary btn-sm">
+                    <span>➕</span> สร้างใบสั่งซื้อใหม่เดี๋ยวนี้
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

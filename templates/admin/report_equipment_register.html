@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}ทะเบียนวัสดุและครุภัณฑ์ ณ วันที่ {{ now.strftime('%d/%m/%Y') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+@media print {
+    .no-print { display: none !important; }
+    body { background: white !important; }
+    .app-layout { display: block !important; }
+    .app-sidebar { display: none !important; }
+    .app-main { margin: 0 !important; padding: 0 !important; }
+    .main-content { padding: 0 !important; }
+    .app-footer { display: none !important; }
+    .mobile-topbar { display: none !important; }
+    .report-sheet { box-shadow: none !important; border: none !important; margin: 0 !important; }
+    table { font-size: 0.68rem !important; page-break-inside: auto; }
+    tr { page-break-inside: avoid; }
+}
+.report-sheet {
+    background: #fff; border: 1px solid #333; border-radius: 4px;
+    padding: 1.5rem 2rem; font-family: 'IBM Plex Sans Thai', 'Prompt', sans-serif;
+    font-size: 0.88rem; color: #111; max-width: 1100px; margin: 0 auto; line-height: 1.6;
+}
+.report-header { text-align: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 3px double #7b2d8b; }
+.report-header h1 { font-size: 1rem; font-weight: 700; margin: 0 0 0.15rem 0; color: #7b2d8b; }
+.report-header .sub { font-size: 0.78rem; color: #555; }
+.report-doc-title {
+    text-align: center; font-size: 1.05rem; font-weight: 700; margin: 0.75rem 0;
+    padding: 0.4rem; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; color: #7b2d8b;
+}
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin: 1rem 0; }
+.stat-box { border: 1px solid #ddd; border-radius: 4px; padding: 0.6rem 0.75rem; text-align: center; background: #f9f9f9; }
+.stat-box .stat-num { font-size: 1.4rem; font-weight: 700; color: #7b2d8b; line-height: 1; }
+.stat-box .stat-label { font-size: 0.72rem; color: #666; margin-top: 0.25rem; }
+.reg-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin: 0.75rem 0; }
+.reg-table th { background: #7b2d8b; color: #fff; padding: 0.4rem 0.5rem; text-align: center; font-weight: 600; font-size: 0.72rem; }
+.reg-table td { border: 1px solid #ccc; padding: 0.3rem 0.5rem; vertical-align: middle; }
+.reg-table tbody tr:nth-child(even) { background: #faf5ff; }
+.reg-table tfoot td { background: #f0e6ff; font-weight: 700; }
+.section-title { font-weight: 700; font-size: 0.85rem; margin: 1rem 0 0.5rem 0; color: #7b2d8b; border-left: 4px solid #7b2d8b; padding-left: 0.5rem; }
+.signature-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2rem; }
+.signature-box { text-align: center; }
+.signature-line { border-bottom: 1px solid #555; height: 40px; margin-bottom: 0.4rem; }
+.sig-label { font-size: 0.73rem; font-weight: 600; color: #7b2d8b; }
+.sig-name { font-size: 0.75rem; color: #333; }
+.sig-date { font-size: 0.7rem; color: #777; margin-top: 0.2rem; }
+.sig-dept { font-size: 0.68rem; color: #999; }
+.filter-form { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.25rem; padding: 1rem; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border); }
+.filter-form label { font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.25rem; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1160px; margin: 0 auto;">
+    <div class="no-print">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+            <a href="{{ url_for('admin_equipment') }}" class="btn btn-secondary btn-sm">← ย้อนกลับ</a>
+            <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">🖨️ พิมพ์ทะเบียน (Print)</button>
+        </div>
+        <!-- Filter -->
+        <form method="GET" class="filter-form">
+            <div>
+                <label>กรองตามประเภท</label>
+                <select name="type" class="form-control" style="min-width:160px;">
+                    <option value="" {% if not selected_type %}selected{% endif %}>ทั้งหมด</option>
+                    <option value="durable_goods" {% if selected_type == 'durable_goods' %}selected{% endif %}>ครุภัณฑ์ (คงทนถาวร)</option>
+                    <option value="material" {% if selected_type == 'material' %}selected{% endif %}>วัสดุ (ใช้หมดไป)</option>
+                </select>
+            </div>
+            <div>
+                <label>กรองตามสถานะ</label>
+                <select name="status" class="form-control" style="min-width:160px;">
+                    <option value="" {% if not selected_status %}selected{% endif %}>ทั้งหมด</option>
+                    <option value="available" {% if selected_status == 'available' %}selected{% endif %}>พร้อมใช้งาน</option>
+                    <option value="borrowed" {% if selected_status == 'borrowed' %}selected{% endif %}>ถูกยืมทั้งหมด</option>
+                    <option value="maintenance" {% if selected_status == 'maintenance' %}selected{% endif %}>ส่งซ่อม</option>
+                    <option value="damaged" {% if selected_status == 'damaged' %}selected{% endif %}>ชำรุด</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">🔍 กรองข้อมูล</button>
+        </form>
+    </div>
+
+    <div class="report-sheet">
+        <!-- Header -->
+        <div class="report-header">
+            <div style="font-size:1.5rem; margin-bottom:0.3rem;">🏫</div>
+            <h1>วิทยาลัยการอาชีพหนองหาน</h1>
+            <div class="sub">Nonghan Industrial and Community Education College</div>
+            <div class="sub">งานพัสดุและสินทรัพย์ถาวร ฝ่ายบริหารทรัพยากร</div>
+        </div>
+
+        <div class="report-doc-title">ทะเบียนวัสดุและครุภัณฑ์<br>
+            {% if selected_type == 'durable_goods' %}เฉพาะครุภัณฑ์คงทนถาวร{% elif selected_type == 'material' %}เฉพาะวัสดุสิ้นเปลือง{% else %}รายการทั้งหมด{% endif %}
+            ณ วันที่ {{ now.strftime('%d/%m/%Y') }}</div>
+
+        <!-- Summary Stats -->
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-num">{{ equipment_list|length }}</div>
+                <div class="stat-label">รายการทั้งหมด</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" style="color:#27ae60;">{{ available_count }}</div>
+                <div class="stat-label">พร้อมใช้งาน</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" style="color:#e67e22;">{{ borrowed_count }}</div>
+                <div class="stat-label">ถูกยืมทั้งหมด</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" style="color:#c0392b;">{{ damaged_count }}</div>
+                <div class="stat-label">ชำรุด/ซ่อม</div>
+            </div>
+        </div>
+        <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 0;">
+            <div class="stat-box">
+                <div class="stat-num" style="color:#7b2d8b;">{{ total_qty }}</div>
+                <div class="stat-label">จำนวนรวมทั้งหมด</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" style="color:#27ae60;">{{ available_qty }}</div>
+                <div class="stat-label">จำนวนคงเหลือ (ให้ยืมได้)</div>
+            </div>
+        </div>
+
+        <!-- Equipment Register Table -->
+        <div class="section-title">รายการทะเบียนวัสดุ / ครุภัณฑ์</div>
+        <table class="reg-table">
+            <thead>
+                <tr>
+                    <th style="width:4%">ที่</th>
+                    <th style="width:13%">รหัสครุภัณฑ์</th>
+                    <th style="width:28%">ชื่อวัสดุ/ครุภัณฑ์</th>
+                    <th style="width:12%">ประเภท</th>
+                    <th style="width:14%">หมวดหมู่</th>
+                    <th style="width:14%">สถานที่จัดเก็บ</th>
+                    <th style="width:5%; text-align:center">ทั้งหมด</th>
+                    <th style="width:5%; text-align:center">คงเหลือ</th>
+                    <th style="width:10%">สถานะ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for eq in equipment_list %}
+                <tr>
+                    <td style="text-align:center">{{ loop.index }}</td>
+                    <td style="font-family:monospace; font-size:0.7rem; font-weight:600">{{ eq.equipment_code }}</td>
+                    <td>
+                        <strong>{{ eq.name }}</strong>
+                        {% if eq.description %}<div style="font-size:0.68rem; color:#777">{{ eq.description[:50] }}{% if eq.description|length > 50 %}...{% endif %}</div>{% endif %}
+                    </td>
+                    <td style="font-size:0.72rem">{{ eq.category.type_display }}</td>
+                    <td style="font-size:0.75rem">{{ eq.category.category_name }}</td>
+                    <td style="font-size:0.75rem">{{ eq.location.location_name }}</td>
+                    <td style="text-align:center; font-weight:700">{{ eq.total_quantity }}</td>
+                    <td style="text-align:center; font-weight:700; color:{% if eq.available_quantity == 0 %}#c0392b{% elif eq.available_quantity < eq.total_quantity %}#e67e22{% else %}#27ae60{% endif %}">{{ eq.available_quantity }}</td>
+                    <td style="font-size:0.73rem">
+                        <span style="color:{% if eq.status == 'available' %}#27ae60{% elif eq.status == 'borrowed' %}#e67e22{% elif eq.status == 'maintenance' %}#2980b9{% else %}#c0392b{% endif %}; font-weight:600">
+                            {% if eq.status == 'available' %}✅{% elif eq.status == 'borrowed' %}🔶{% elif eq.status == 'maintenance' %}🔧{% else %}❌{% endif %}
+                            {{ eq.status_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="6" style="text-align:right; border:none">รวมทั้งสิ้น</td>
+                    <td style="text-align:center">{{ total_qty }}</td>
+                    <td style="text-align:center; color:#27ae60">{{ available_qty }}</td>
+                    <td>รายการ</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <!-- Signatures -->
+        <div class="signature-row">
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="sig-label">ลายมือชื่อผู้จัดทำทะเบียน</div>
+                <div class="sig-name">(....................................................)</div>
+                <div class="sig-dept">เจ้าหน้าที่พัสดุ / ผู้รับผิดชอบ</div>
+                <div class="sig-date">วันที่ ......../........../..........[…]</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="sig-label">ลายมือชื่อหัวหน้างานพัสดุ</div>
+                <div class="sig-name">(....................................................)</div>
+                <div class="sig-dept">หัวหน้างานพัสดุและสินทรัพย์ถาวร</div>
+                <div class="sig-date">วันที่ ......../........../..........[…]</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="sig-label">ลายมือชื่อรับรอง</div>
+                <div class="sig-name">(....................................................)</div>
+                <div class="sig-dept">รองผู้อำนวยการฝ่ายบริหารทรัพยากร</div>
+                <div class="sig-date">วันที่ ......../........../..........[…]</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid #ddd; font-size: 0.68rem; color: #888; text-align: center;">
+            ทะเบียนนี้ออกโดยระบบสารสนเทศบริการยืม-คืนวัสดุและครุภัณฑ์ วิทยาลัยการอาชีพหนองหาน |
+            พิมพ์เมื่อ: {{ now.strftime('%d/%m/%Y %H:%M') }} น. | จำนวน {{ equipment_list|length }} รายการ
+        </div>
+    </div>
+</div>
+{% endblock %}

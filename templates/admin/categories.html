@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}จัดการประเภทและหมวดหมู่{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>🏷️</span> จัดการประเภทและหมวดหมู่ (Categories)
+        </h1>
+        <p class="page-subtitle">เพิ่มประเภทใหม่ แก้ไข และจำแนกประเภทวัสดุสิ้นเปลือง / ครุภัณฑ์คงทน (Requirement 3)</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addCategoryModal')">
+            <span>➕</span> เพิ่มประเภทใหม่
+        </button>
+    </div>
+</div>
+
+<!-- Category List Table -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        {% if categories %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">รหัสประเภท</th>
+                            <th>ชื่อหมวดหมู่ / ประเภท</th>
+                            <th>ชนิดสินทรัพย์</th>
+                            <th>จำนวนรายการในระบบ</th>
+                            <th style="text-align: right;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                            <tr>
+                                <td style="font-family: monospace; font-weight: 600;">#CAT-{{ cat.category_id }}</td>
+                                <td>
+                                    <strong style="font-size: 0.95rem;">{{ cat.category_name }}</strong>
+                                </td>
+                                <td>
+                                    {% if cat.type == 'material' %}
+                                        <span class="badge badge-warning">📦 วัสดุ (ใช้หมดไป)</span>
+                                    {% else %}
+                                        <span class="badge badge-info">🛠️ ครุภัณฑ์ (คงทนถาวร)</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span style="font-weight: 600;">{{ cat.equipment_list|length }}</span> รายการ
+                                </td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="openEditCategoryModal('{{ cat.category_id }}', '{{ cat.category_name }}', '{{ cat.type }}')">
+                                        ✏️ แก้ไข
+                                    </button>
+
+                                    {% if current_user.role == 'admin' %}
+                                        <form action="{{ url_for('delete_category', category_id=cat.category_id) }}" method="POST" style="display: inline-block;">
+                                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('ยืนยันลบประเภท {{ cat.category_name }} ใช่หรือไม่?')">
+                                                🗑️ ลบ
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                ไม่มีข้อมูลประเภทวัสดุ/ครุภัณฑ์
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Category Modal -->
+<div class="modal-backdrop" id="addCategoryModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 class="modal-title">➕ เพิ่มประเภทวัสดุ/ครุภัณฑ์ใหม่</h2>
+            <button type="button" class="modal-close" onclick="closeModal('addCategoryModal')">✕</button>
+        </div>
+        <form action="{{ url_for('add_category') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">ชื่อประเภท / หมวดหมู่ใหม่ <span style="color: var(--danger);">*</span></label>
+                    <input type="text" name="category_name" class="form-control" placeholder="เช่น อุปกรณ์เครือข่ายคอมพิวเตอร์, เครื่องมืองานช่างไม้" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ชนิดของสินทรัพย์ <span style="color: var(--danger);">*</span></label>
+                    <select name="type" class="form-control" required>
+                        <option value="durable_goods">ครุภัณฑ์ (ทรัพย์สินคงทนถาวร มีการควบคุมการยืม-คืน)</option>
+                        <option value="material">วัสดุ (สิ่งของใช้หมดไป หรืออายุสั้น)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addCategoryModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">บันทึกประเภทใหม่</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div class="modal-backdrop" id="editCategoryModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 class="modal-title">✏️ แก้ไขประเภท</h2>
+            <button type="button" class="modal-close" onclick="closeModal('editCategoryModal')">✕</button>
+        </div>
+        <form id="editCategoryForm" method="POST">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">ชื่อประเภท</label>
+                    <input type="text" name="category_name" id="editCategoryName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">ชนิดของสินทรัพย์</label>
+                    <select name="type" id="editCategoryType" class="form-control" required>
+                        <option value="durable_goods">ครุภัณฑ์ (คงทนถาวร)</option>
+                        <option value="material">วัสดุ (ใช้หมดไป)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editCategoryModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openEditCategoryModal(id, name, type) {
+    document.getElementById('editCategoryForm').action = `/admin/categories/${id}/edit`;
+    document.getElementById('editCategoryName').value = name;
+    document.getElementById('editCategoryType').value = type;
+    openModal('editCategoryModal');
+}
+</script>
+{% endblock %}

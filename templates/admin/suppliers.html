@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+
+{% block title %}ข้อมูลบริษัทคู่ค้าและผู้จัดจำหน่าย{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="margin-bottom: 0.35rem;">
+            <a href="{{ url_for('purchase_orders_list') }}" style="text-decoration: none; font-size: 0.85rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span>←</span> กลับไปหน้ารายการสั่งซื้อ
+            </a>
+        </div>
+        <h1 class="page-title">
+            <span>🏢</span> ข้อมูลบริษัทคู่ค้าและผู้จัดจำหน่าย
+        </h1>
+        <p class="page-subtitle">ดูรายละเอียดบริษัทคู่ค้า แก้ไขข้อมูล ติดตามประวัติการสั่งซื้อ และจัดการรายการสินค้าที่บริษัทจำหน่าย</p>
+    </div>
+    <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addSupplierModal')">
+            <span>➕</span> เพิ่มบริษัทคู่ค้าใหม่
+        </button>
+        <a href="{{ url_for('purchase_order_new') }}" class="btn btn-secondary btn-sm">
+            <span>🛒</span> สร้างใบสั่งซื้อใหม่
+        </a>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding: 1rem 1.25rem;">
+        <form method="GET" action="{{ url_for('suppliers_list') }}" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 250px;">
+                <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="ค้นหาชื่อบริษัท, ผู้ติดต่อ, หรือเบอร์โทรศัพท์...">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <span>🔍</span> ค้นหา
+            </button>
+            {% if search_query %}
+                <a href="{{ url_for('suppliers_list') }}" class="btn btn-secondary btn-sm">ล้างการค้นหา</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Suppliers List -->
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.25rem;">
+    {% if suppliers %}
+        {% for sup in suppliers %}
+            <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="card-header" style="padding: 1.15rem 1.35rem; display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+                        <div>
+                            <div style="font-weight: 700; font-size: 1.05rem; color: var(--text-main); line-height: 1.4;">
+                                {{ sup.company_name }}
+                            </div>
+                            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">
+                                รหัสบริษัท: #SUP-{{ "%03d"|format(sup.supplier_id) }}
+                            </div>
+                        </div>
+                        <span class="badge badge-secondary" style="font-size: 0.72rem;">
+                            {{ sup.products|length }} สินค้า
+                        </span>
+                    </div>
+
+                    <div class="card-body" style="padding: 1.25rem; font-size: 0.86rem; line-height: 1.65;">
+                        <div style="display: flex; flex-direction: column; gap: 0.45rem;">
+                            <div>
+                                <span style="color: var(--text-muted);">👤 ผู้ติดต่อ:</span>
+                                <strong style="color: var(--text-main);">{{ sup.contact_name or '-' }}</strong>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">📞 เบอร์โทรศัพท์:</span>
+                                <strong style="color: var(--primary);">{{ sup.phone or '-' }}</strong>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">✉️ อีเมล:</span>
+                                <span style="color: var(--text-main);">{{ sup.email or '-' }}</span>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">🏛️ เลขผู้เสียภาษี:</span>
+                                <span style="font-family: var(--font-numeric);">{{ sup.tax_id or '-' }}</span>
+                            </div>
+                            <div style="padding-top: 0.35rem; border-top: 1px dashed var(--border); margin-top: 0.35rem;">
+                                <span style="color: var(--text-muted);">📍 ที่อยู่:</span>
+                                <span style="color: var(--text-body);">{{ sup.address or '-' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Products Preview Tag List -->
+                        <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
+                                <strong style="font-size: 0.8rem; color: var(--text-main);">สินค้าที่บริษัทนี้จำหน่าย:</strong>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">{{ sup.products|length }} รายการ</span>
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.35rem; max-height: 75px; overflow-y: auto;">
+                                {% if sup.products %}
+                                    {% for p in sup.products[:4] %}
+                                        <span class="badge badge-secondary" style="font-size: 0.72rem; font-weight: normal; background: #f1f5f9; color: var(--text-main);">
+                                            {{ p.product_name }}
+                                        </span>
+                                    {% endfor %}
+                                    {% if sup.products|length > 4 %}
+                                        <span class="badge badge-secondary" style="font-size: 0.72rem; color: var(--text-muted);">
+                                            +{{ sup.products|length - 4 }} อื่นๆ
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span style="font-size: 0.78rem; color: var(--text-muted);">ยังไม่มีรายการสินค้าในแค็ตตาล็อก</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Orders Count -->
+                        <div style="margin-top: 0.75rem; padding: 0.65rem 0.85rem; background: var(--bg-subtle); border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem;">
+                            <span>ประวัติการสั่งซื้อจากบริษัทนี้:</span>
+                            <strong style="color: var(--primary);">{{ sup.purchase_orders|length }} ใบสั่งซื้อ</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="card-footer" style="padding: 0.95rem 1.25rem; background: #fafafa; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 0.4rem;">
+                        <button type="button" class="btn btn-secondary btn-sm" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;" onclick="openEditModal({{ sup.supplier_id }}, '{{ sup.company_name|replace("'", "\\'") }}', '{{ (sup.contact_name or '')|replace("'", "\\'") }}', '{{ (sup.phone or '')|replace("'", "\\'") }}', '{{ (sup.email or '')|replace("'", "\\'") }}', '{{ (sup.tax_id or '')|replace("'", "\\'") }}', '{{ (sup.address or '')|replace("'", "\\'") }}')">
+                            <span>✏️</span> แก้ไข
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;" onclick="openProductsModal({{ sup.supplier_id }}, '{{ sup.company_name|replace("'", "\\'") }}')">
+                            <span>📦</span> จัดการสินค้า
+                        </button>
+                    </div>
+                    <a href="{{ url_for('purchase_order_new', supplier_id=sup.supplier_id) }}" class="btn btn-primary btn-sm" style="padding: 0.3rem 0.75rem; font-size: 0.78rem;">
+                        <span>🛒</span> สั่งซื้อ
+                    </a>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3.5rem 1.5rem; color: var(--text-muted);">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">🏢</div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">ไม่พบข้อมูลบริษัทคู่ค้า</h3>
+            <p style="font-size: 0.86rem; margin-bottom: 1.25rem;">ยังไม่มีรายชื่อบริษัทคู่ค้าที่ตรงกับเงื่อนไข หรือยังไม่ได้เพิ่มข้อมูล</p>
+            <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addSupplierModal')">
+                <span>➕</span> เพิ่มบริษัทคู่ค้าแห่งแรก
+            </button>
+        </div>
+    {% endif %}
+</div>
+
+<!-- =========================================================================
+     MODAL: เพิ่มบริษัทคู่ค้าใหม่
+     ========================================================================= -->
+<div class="modal-backdrop" id="addSupplierModal">
+    <div class="modal-box" style="max-width: 580px;">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <span>🏢</span> เพิ่มข้อมูลบริษัทคู่ค้าใหม่
+            </h3>
+            <button type="button" class="modal-close" onclick="closeModal('addSupplierModal')">✕</button>
+        </div>
+        <form method="POST" action="{{ url_for('supplier_add') }}">
+            <div class="modal-body" style="padding: 1.35rem;">
+                <div class="form-group">
+                    <label class="form-label">ชื่อบริษัท / ร้านค้า *</label>
+                    <input type="text" name="company_name" class="form-control" placeholder="เช่น บริษัท สยามเทคโนโลยี จำกัด" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ชื่อผู้ติดต่อ / ตัวแทนขาย</label>
+                        <input type="text" name="contact_name" class="form-control" placeholder="เช่น คุณสมบัติ ใจดี">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เบอร์โทรศัพท์ติดต่อ</label>
+                        <input type="text" name="phone" class="form-control" placeholder="เช่น 02-123-4567, 089-xxx-xxxx">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">อีเมล</label>
+                        <input type="email" name="email" class="form-control" placeholder="sales@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เลขประจำตัวผู้เสียภาษี</label>
+                        <input type="text" name="tax_id" class="form-control" placeholder="เลขประจำตัว 13 หลัก">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">ที่อยู่บริษัท</label>
+                    <textarea name="address" class="form-control" rows="2" placeholder="เลขที่ ถนน ตำบล อำเภอ จังหวัด"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 1rem 1.35rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('addSupplierModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <span>💾</span> บันทึกบริษัท
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: แก้ไขข้อมูลบริษัทคู่ค้า
+     ========================================================================= -->
+<div class="modal-backdrop" id="editSupplierModal">
+    <div class="modal-box" style="max-width: 580px;">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <span>✏️</span> แก้ไขข้อมูลบริษัทคู่ค้า
+            </h3>
+            <button type="button" class="modal-close" onclick="closeModal('editSupplierModal')">✕</button>
+        </div>
+        <form id="editSupplierForm" method="POST" action="">
+            <div class="modal-body" style="padding: 1.35rem;">
+                <div class="form-group">
+                    <label class="form-label">ชื่อบริษัท / ร้านค้า *</label>
+                    <input type="text" name="company_name" id="editCompName" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ชื่อผู้ติดต่อ</label>
+                        <input type="text" name="contact_name" id="editCompContact" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เบอร์โทรศัพท์</label>
+                        <input type="text" name="phone" id="editCompPhone" class="form-control">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">อีเมล</label>
+                        <input type="email" name="email" id="editCompEmail" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เลขประจำตัวผู้เสียภาษี</label>
+                        <input type="text" name="tax_id" id="editCompTaxId" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">ที่อยู่บริษัท</label>
+                    <textarea name="address" id="editCompAddress" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 1rem 1.35rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('editSupplierModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <span>💾</span> บันทึกการแก้ไข
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: ดูและจัดการสินค้าที่บริษัทนี้จำหน่าย
+     ========================================================================= -->
+<div class="modal-backdrop" id="productsModal">
+    <div class="modal-box" style="max-width: 720px;">
+        <div class="modal-header">
+            <div>
+                <h3 class="modal-title" id="productsModalTitle">
+                    <span>📦</span> สินค้าที่บริษัทจำหน่าย
+                </h3>
+                <div style="font-size: 0.8rem; color: var(--text-muted);" id="productsModalSubtitle"></div>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('productsModal')">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 1.35rem; max-height: 65vh; overflow-y: auto;">
+            <!-- Add new product inline form -->
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+                <div style="font-weight: 700; font-size: 0.88rem; margin-bottom: 0.65rem; color: var(--text-main);">
+                    ➕ เพิ่มสินค้าใหม่ในแค็ตตาล็อกของบริษัทนี้:
+                </div>
+                <form id="addProductForm" onsubmit="submitNewProduct(event)">
+                    <input type="hidden" id="prodSupplierId" name="supplier_id">
+                    <div class="form-row" style="margin-bottom: 0.65rem;">
+                        <div>
+                            <input type="text" name="product_name" id="newProdName" class="form-control" placeholder="ชื่อสินค้า/พัสดุ *" required>
+                        </div>
+                        <div>
+                            <input type="text" name="product_code" id="newProdCode" class="form-control" placeholder="รหัสสินค้า/รุ่น">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-bottom: 0.65rem;">
+                        <div>
+                            <input type="number" step="0.01" min="0" name="unit_price" id="newProdPrice" class="form-control" placeholder="ราคาต่อหน่วย (฿) *" required>
+                        </div>
+                        <div>
+                            <input type="text" name="unit" id="newProdUnit" class="form-control" value="ชิ้น" placeholder="หน่วยนับ *" required>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <span>+</span> เพิ่มสินค้าในแค็ตตาล็อก
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Products List -->
+            <div id="supplierProductsContainer">
+                <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    กำลังโหลดข้อมูล...
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" style="padding: 1rem 1.35rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('productsModal')">ปิด</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('active');
+}
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+}
+
+function openEditModal(id, name, contact, phone, email, taxId, address) {
+    document.getElementById('editCompName').value = name;
+    document.getElementById('editCompContact').value = contact;
+    document.getElementById('editCompPhone').value = phone;
+    document.getElementById('editCompEmail').value = email;
+    document.getElementById('editCompTaxId').value = taxId;
+    document.getElementById('editCompAddress').value = address;
+    document.getElementById('editSupplierForm').action = `/admin/suppliers/${id}/edit`;
+    openModal('editSupplierModal');
+}
+
+let activeSupplierId = null;
+
+function openProductsModal(id, name) {
+    activeSupplierId = id;
+    document.getElementById('prodSupplierId').value = id;
+    document.getElementById('productsModalTitle').innerHTML = `<span>📦</span> แค็ตตาล็อกสินค้า`;
+    document.getElementById('productsModalSubtitle').textContent = name;
+    openModal('productsModal');
+    loadProducts(id);
+}
+
+function loadProducts(id) {
+    const container = document.getElementById('supplierProductsContainer');
+    container.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-muted);">กำลังโหลดข้อมูล...</div>';
+
+    fetch(`/api/suppliers/${id}/products`)
+        .then(res => res.json())
+        .then(data => {
+            const products = data.products || [];
+            if (products.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                        ยังไม่มีสินค้าในแค็ตตาล็อกของบริษัทนี้ สามารถเพิ่มรายการแรกได้ด้านบน
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="table-responsive">
+                    <table class="table" style="font-size: 0.84rem;">
+                        <thead>
+                            <tr>
+                                <th style="width: 100px;">รหัส</th>
+                                <th>ชื่อสินค้า</th>
+                                <th style="width: 100px; text-align: right;">ราคาต่อหน่วย</th>
+                                <th style="width: 80px; text-align: center;">หน่วย</th>
+                                <th style="width: 90px; text-align: center;">สั่งซื้อ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            products.forEach(p => {
+                html += `
+                    <tr>
+                        <td style="font-family: var(--font-numeric); color: var(--text-muted); font-weight: 600;">
+                            ${p.product_code || '-'}
+                        </td>
+                        <td>
+                            <strong style="color: var(--text-main);">${p.product_name}</strong>
+                            ${p.description ? `<div style="font-size: 0.75rem; color: var(--text-muted);">${p.description}</div>` : ''}
+                        </td>
+                        <td style="text-align: right; font-family: var(--font-numeric); font-weight: 700; color: var(--primary);">
+                            ฿${parseFloat(p.unit_price).toLocaleString('en-US', {minimumFractionDigits: 2})}
+                        </td>
+                        <td style="text-align: center; color: var(--text-muted);">${p.unit || 'ชิ้น'}</td>
+                        <td style="text-align: center;">
+                            <a href="/admin/purchases/new?supplier_id=${id}" class="btn btn-secondary btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.74rem;">
+                                สั่งซื้อ
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        })
+        .catch(err => {
+            console.error(err);
+            container.innerHTML = '<div style="color: var(--danger); text-align: center;">ไม่สามารถโหลดข้อมูลสินค้าได้</div>';
+        });
+}
+
+function submitNewProduct(e) {
+    e.preventDefault();
+    if (!activeSupplierId) return;
+
+    const form = document.getElementById('addProductForm');
+    const formData = new FormData(form);
+
+    fetch(`/admin/suppliers/${activeSupplierId}/products/add`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            form.reset();
+            document.getElementById('newProdUnit').value = 'ชิ้น';
+            loadProducts(activeSupplierId);
+            alert('เพิ่มสินค้าลงในแค็ตตาล็อกเรียบร้อยแล้ว');
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาดในการเพิ่มสินค้า');
+        }
+    })
+    .catch(err => console.error(err));
+}
+</script>
+{% endblock %}

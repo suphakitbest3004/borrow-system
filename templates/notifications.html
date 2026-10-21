@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}การแจ้งเตือนทั้งหมด{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>🔔</span> การแจ้งเตือนของฉัน (Notifications)
+        </h1>
+        <p class="page-subtitle">ข้อความแจ้งเตือนผลการอนุมัติ กำหนดส่งคืน และข่าวสารจากเจ้าหน้าที่</p>
+    </div>
+</div>
+
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div class="card-body" style="padding: 0;">
+        {% if notifications %}
+            <div style="display: flex; flex-direction: column;">
+                {% for n in notifications %}
+                    <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; gap: 1rem; align-items: flex-start; {% if not n.is_read %}background: #f8fafc;{% endif %}">
+                        <div style="width: 40px; height: 40px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; 
+                            background: {% if n.type == 'approval' %}var(--success-bg){% elif n.type == 'rejection' or n.type == 'overdue' %}var(--danger-bg){% else %}var(--bg-subtle){% endif %};">
+                            {% if n.type == 'approval' %}✅
+                            {% elif n.type == 'rejection' %}❌
+                            {% elif n.type == 'overdue' %}⚠️
+                            {% elif n.type == 'due_soon' %}⏰
+                            {% else %}🔔{% endif %}
+                        </div>
+
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.25rem;">
+                                <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
+                                    {{ n.title }}
+                                </h3>
+                                <span style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                    {{ n.created_at.strftime('%d/%m/%Y %H:%M น.') }}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.5; white-space: pre-line;">{{ n.message }}</div>
+                            <div style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-subtle);">
+                                ช่องทาง: <span class="badge badge-secondary" style="font-size: 0.7rem;">{{ n.channel }}</span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
+                <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔕</div>
+                <p>ไม่มีการแจ้งเตือนในขณะนี้</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

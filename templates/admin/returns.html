@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}บันทึกการรับคืนและจัดการค่าปรับ{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>📥</span> บันทึกการรับคืนและจัดการค่าปรับ (Returns & Fines)
+        </h1>
+        <p class="page-subtitle">ตรวจรับคืนอุปกรณ์ คำนวณค่าปรับอัตโนมัติ (วันละ 100 บาทตามระเบียบ) และออกใบเสร็จ</p>
+    </div>
+    <div>
+        <a href="{{ url_for('admin_fines') }}" class="btn btn-secondary btn-sm">
+            <span>🧾</span> ทะเบียนใบเสร็จค่าปรับ
+        </a>
+    </div>
+</div>
+
+<!-- Search Active Borrows -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding: 1rem 1.25rem;">
+        <form method="GET" action="{{ url_for('admin_returns') }}" style="display: flex; gap: 1rem;">
+            <input type="text" name="q" value="{{ search_q }}" class="form-control" placeholder="ค้นหาชื่อผู้ยืม รหัสนักศึกษา หรือรหัสอุปกรณ์เพื่อรับคืน...">
+            <button type="submit" class="btn btn-primary btn-sm" style="white-space: nowrap;">ค้นหารายการยืม</button>
+            {% if search_q %}
+                <a href="{{ url_for('admin_returns') }}" class="btn btn-secondary btn-sm">ล้าง</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Active Borrowings Awaiting Return -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+        <h3 class="card-title">
+            <span>⏳</span> รายการอุปกรณ์ที่ยังไม่ส่งคืน ({{ active_borrowings|length }} รายการ)
+        </h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if active_borrowings %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>รหัสยืม</th>
+                            <th>ผู้ยืม</th>
+                            <th>รายการอุปกรณ์</th>
+                            <th>จำนวน</th>
+                            <th>วันที่ยืม</th>
+                            <th>กำหนดส่งคืน</th>
+                            <th>สถานะ</th>
+                            <th style="text-align: right;">ดำเนินการรับคืน</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in active_borrowings %}
+                            {% set is_late = b.is_overdue %}
+                            {% set days_late = 0 %}
+                            {% set est_fine = 0 %}
+                            {% if is_late %}
+                                {% set diff = now - b.due_date %}
+                                {% set days_late = diff.days if diff.days > 0 else 1 %}
+                                {% set est_fine = days_late * 100 %}
+                            {% endif %}
+                            <tr>
+                                <td style="font-family: monospace; font-weight: 600;">#{{ b.borrow_id }}</td>
+                                <td>
+                                    <div style="font-weight: 600;">{{ b.user.full_name }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">{{ b.user.student_or_citizen_id }} ({{ b.user.role_display }})</div>
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600;">{{ b.equipment.name }}</div>
+                                    <div style="font-size: 0.75rem; font-family: monospace; color: var(--text-muted);">{{ b.equipment.equipment_code }}</div>
+                                </td>
+                                <td><strong>{{ b.quantity }}</strong> ชิ้น</td>
+                                <td>{{ b.borrow_date.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <strong>{{ b.due_date.strftime('%d/%m/%Y %H:%M') }}</strong>
+                                </td>
+                                <td>
+                                    {% if is_late %}
+                                        <span class="badge badge-danger">
+                                            ⚠️ เกินกำหนด ({{ days_late }} วัน / ค่าปรับ {{ est_fine }} บ.)
+                                        </span>
+                                    {% else %}
+                                        <span class="badge badge-primary">กำลังยืม</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: right;">
+                                    <button type="button" class="btn btn-success btn-sm"
+                                        onclick="prepareReturnModal('{{ b.borrow_id }}', '{{ b.user.full_name }}', '{{ b.equipment.name }}', '{{ b.borrow_date.strftime('%d/%m/%Y') }}', '{{ b.due_date.strftime('%d/%m/%Y') }}', {{ 'true' if is_late else 'false' }}, {{ days_late }}, {{ est_fine }})">
+                                        📥 รับคืนอุปกรณ์
+                                    </button>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+                ไม่มีรายการค้างส่งคืน
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Returns History -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">
+            <span>📜</span> รายการที่รับคืนล่าสุด
+        </h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if recent_returns %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>รหัสคืน</th>
+                            <th>อุปกรณ์</th>
+                            <th>ผู้ยืม</th>
+                            <th>วันที่รับคืน</th>
+                            <th>สภาพอุปกรณ์</th>
+                            <th>คืนช้า (วัน)</th>
+                            <th>เจ้าหน้าที่ผู้ตรวจรับ</th>
+                            <th>ใบเสร็จค่าปรับ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ret in recent_returns %}
+                            <tr>
+                                <td style="font-family: monospace;">#RET-{{ ret.return_id }}</td>
+                                <td style="font-weight: 600;">{{ ret.borrowing.equipment.name }}</td>
+                                <td>{{ ret.borrowing.user.full_name }}</td>
+                                <td>{{ ret.return_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                                <td><span class="badge badge-secondary">{{ ret.condition_display }}</span></td>
+                                <td>{{ ret.late_days }} วัน</td>
+                                <td>{{ ret.receiver.first_name }}</td>
+                                <td>
+                                    <div style="display:flex; flex-direction:column; gap:0.3rem; align-items:flex-start;">
+                                        {% if ret.fine %}
+                                            <a href="{{ url_for('fine_receipt', fine_id=ret.fine.fine_id) }}" class="btn btn-secondary btn-sm">
+                                                🧾 {{ ret.fine.receipt_number }} ({{ ret.fine.total_fine|round(2) }} บ.)
+                                            </a>
+                                        {% else %}
+                                            <span style="color: var(--text-subtle); font-size: 0.8rem;">ไม่มีค่าปรับ</span>
+                                        {% endif %}
+                                        <a href="{{ url_for('return_form_print', return_id=ret.return_id) }}" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 0.2rem 0.6rem;">
+                                            🖨️ ใบรับคืน
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Return & Fine Modal -->
+<div class="modal-backdrop" id="returnModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 class="modal-title">📥 บันทึกการตรวจรับคืนอุปกรณ์</h2>
+            <button type="button" class="modal-close" onclick="closeModal('returnModal')">✕</button>
+        </div>
+        <form action="{{ url_for('admin_returns') }}" method="POST">
+            <div class="modal-body">
+                <input type="hidden" name="borrow_id" id="returnBorrowId">
+
+                <div style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+                    <div style="font-weight: 700; font-size: 1rem; margin-bottom: 0.25rem;" id="returnEquipmentName"></div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">
+                        ผู้ยืม: <strong id="returnBorrowerName"></strong> | วันที่ยืม: <span id="returnBorrowDate"></span> | กำหนดคืน: <span id="returnDueDate"></span>
+                    </div>
+                </div>
+
+                <!-- Overdue Fine Alert Box -->
+                <div id="returnOverdueAlert" style="display: none; background: var(--danger-bg); border: 1px solid var(--danger-border); padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; font-size: 0.85rem; color: var(--danger);">
+                    ⚠️ <strong>รายการนี้คืนเกินกำหนดส่ง:</strong> เลยกำหนดมาแล้ว <span id="returnLateDaysText" style="font-weight: 700;"></span> วัน
+                    <br>คิดค่าปรับคืนล่าช้าอัตโนมัติ: <strong id="returnLateFineText"></strong> บาท (อัตราวันละ 100 บาท)
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">สภาพอุปกรณ์ที่นำมาคืน <span style="color: var(--danger);">*</span></label>
+                    <select name="condition_status" class="form-control" required>
+                        <option value="normal">สภาพปกติสมบูรณ์ พร้อมนำเข้าสต็อกใช้งานต่อ</option>
+                        <option value="damaged">ชำรุดเสียหาย (ต้องส่งซ่อมบำรุงหรือคิดค่าชดเชย)</option>
+                        <option value="lost">สูญหาย (คิดค่าชดใช้ตามราคาสินทรัพย์)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ค่าปรับกรณีชำรุด / สูญหายเพิ่มเติม (บาท)</label>
+                    <input type="number" name="damage_fine" id="returnDamageFineInput" class="form-control" value="0" min="0" step="10">
+                    <div class="form-text">ระบุ 0 หากไม่มีความเสียหาย</div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid var(--border); padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+                    <span style="font-weight: 600;">ยอดรวมค่าปรับทั้งหมด:</span>
+                    <span id="returnTotalFineDisplay" style="font-size: 1.25rem; font-weight: 700; color: var(--danger);">0.00 บาท</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ช่องทางชำระเงิน</label>
+                        <select name="payment_method" class="form-control">
+                            <option value="cash">เงินสด</option>
+                            <option value="transfer">โอนเงินเข้าบัญชีวิทยาลัย</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">สถานะการชำระเงิน</label>
+                        <select name="payment_status" class="form-control">
+                            <option value="paid">ชำระเรียบร้อยแล้ว (ออกใบเสร็จ)</option>
+                            <option value="unpaid">ค้างชำระ</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('returnModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary" style="font-weight: 600;"><span>📥</span> บันทึกการรับคืน</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

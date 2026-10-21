@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}หน้าเพิ่มวัสดุและครุภัณฑ์{% endblock %}
+
+{% block content %}
+<form action="{{ url_for('batch_add_equipment') }}" method="POST" enctype="multipart/form-data" id="batchEquipmentForm">
+    <!-- Page Header with Save All Buttons -->
+    <div class="page-header" style="position: sticky; top: 72px; z-index: 40; background: rgba(248, 250, 252, 0.95); backdrop-filter: blur(8px); padding-top: 1rem;">
+        <div>
+            <h1 class="page-title">
+                <span>➕</span> หน้าเพิ่มวัสดุและครุภัณฑ์
+            </h1>
+            <p class="page-subtitle">กรอกข้อมูลรายการวัสดุ/ครุภัณฑ์ สามารถเพิ่มได้หลายรายการพร้อมกัน แล้วกดปุ่มบันทึกทั้งหมด</p>
+        </div>
+        <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+            <a href="{{ url_for('admin_equipment') }}" class="btn btn-secondary btn-sm">
+                ← กลับไปหน้ารายการ
+            </a>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addNewEquipmentRow()">
+                <span>➕</span> เพิ่มแถวรายการ (+1)
+            </button>
+            <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.55rem 1.35rem; font-weight: 600; font-size: 0.9rem; background: var(--primary);">
+                <span>💾</span> บันทึกทั้งหมด
+            </button>
+        </div>
+    </div>
+
+    <!-- Alert / Tips Box -->
+    <div style="background: #ffffff; border: 1px solid var(--border); border-left: 4px solid var(--accent-blue); padding: 1rem 1.25rem; border-radius: var(--radius-md); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-xs);">
+        <div style="font-size: 0.88rem; color: var(--text-body);">
+            💡 <strong>คำแนะนำ:</strong> กรอกข้อมูลให้ครบถ้วนอย่างน้อย 1 รายการ หากต้องการเพิ่มหลายรายการพร้อมกันให้กดปุ่ม <strong>"เพิ่มแถวรายการ"</strong> จากนั้นกดปุ่ม <strong>"บันทึกทั้งหมด"</strong> ระบบจะบันทึกทุกรายการพร้อมกันทันที
+        </div>
+        <div>
+            <span class="badge badge-info" id="itemCountBadge" style="font-size: 0.8rem; padding: 0.35rem 0.85rem;">
+                รายการที่จะบันทึก: 1 รายการ
+            </span>
+        </div>
+    </div>
+
+    <!-- Equipment Rows Container -->
+    <div id="equipmentRowsContainer" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <!-- Row Item 1 -->
+        <div class="card equipment-entry-card" id="equipmentRow_0">
+            <div class="card-header" style="background: #fafafa;">
+                <div style="display: flex; align-items: center; gap: 0.65rem;">
+                    <span class="avatar-initial row-number-badge" style="width: 26px; height: 26px; font-size: 0.78rem;">1</span>
+                    <h3 class="card-title" style="font-size: 1rem;">
+                        ข้อมูลวัสดุ / ครุภัณฑ์ <span class="row-label-text">#1</span>
+                    </h3>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-danger btn-sm delete-row-btn" onclick="removeEquipmentRow(0)" style="display: none; padding: 0.25rem 0.6rem; font-size: 0.75rem;">
+                        🗑️ ลบแถวนี้
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: 140px 1fr; gap: 1.5rem; align-items: start;">
+                    <!-- Image Upload with Live Preview -->
+                    <div>
+                        <label class="form-label" style="font-size: 0.78rem;">รูปภาพอุปกรณ์</label>
+                        <div class="image-upload-wrapper" style="padding: 0.85rem 0.5rem;" onclick="triggerFileInput(0)">
+                            <div class="image-preview-box" style="width: 95px; height: 95px; margin-bottom: 0.4rem;">
+                                <img id="previewImg_0" src="{{ url_for('static', filename='uploads/multimeter.svg') }}" alt="Preview" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                            <div style="font-size: 0.74rem; font-weight: 600; color: var(--primary);">เลือกรูปภาพ</div>
+                            <input type="file" name="image[]" id="fileInput_0" accept="image/*" style="display: none;" onchange="previewSelectedImage(this, 0)">
+                        </div>
+                    </div>
+
+                    <!-- Fields Grid -->
+                    <div>
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">รหัสพัสดุ / ครุภัณฑ์ <span style="color: var(--danger);">*</span></label>
+                                <input type="text" name="equipment_code[]" class="form-control" placeholder="เช่น EQ-EL-015 หรือบาร์โค้ด" required>
+                            </div>
+                            <div class="form-group" style="flex: 2;">
+                                <label class="form-label">ชื่อวัสดุ / ครุภัณฑ์ <span style="color: var(--danger);">*</span></label>
+                                <input type="text" name="name[]" class="form-control" placeholder="เช่น เครื่องวัดกระแสไฟฟ้าแบบดิจิทัล" required>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">จำนวน (ชิ้น) <span style="color: var(--danger);">*</span></label>
+                                <input type="number" name="total_quantity[]" class="form-control" value="1" min="1" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">หมวดหมู่ <span style="color: var(--danger);">*</span></label>
+                                <select name="category_id[]" class="form-control" required>
+                                    {% for cat in categories %}
+                                        <option value="{{ cat.category_id }}">{{ cat.category_name }} ({{ cat.type_display }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">สถานที่จัดเก็บ <span style="color: var(--danger);">*</span></label>
+                                <select name="location_id[]" class="form-control" required>
+                                    {% for loc in locations %}
+                                        <option value="{{ loc.location_id }}">{{ loc.location_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">สถานะเริ่มต้น</label>
+                                <select name="status[]" class="form-control">
+                                    <option value="available">พร้อมใช้งาน</option>
+                                    <option value="maintenance">ส่งซ่อมบำรุง</option>
+                                    <option value="damaged">ชำรุดเสียหาย</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label class="form-label">รายละเอียด / คุณสมบัติเพิ่มเติม</label>
+                            <input type="text" name="description[]" class="form-control" placeholder="เช่น ยี่ห้อ รุ่น ขนาด หรือสเปกเฉพาะทาง (ไม่ระบุได้)">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Action Controls -->
+    <div style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; background: white; border: 1px solid var(--border); padding: 1.25rem 1.65rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+        <button type="button" class="btn btn-secondary" onclick="addNewEquipmentRow()">
+            <span>➕</span> เพิ่มแถวรายการใหม่ (+ Add Row)
+        </button>
+
+        <div style="display: flex; gap: 0.85rem; align-items: center;">
+            <a href="{{ url_for('admin_equipment') }}" class="btn btn-secondary">
+                ยกเลิก
+            </a>
+            <button type="submit" class="btn btn-primary btn-lg" style="padding: 0.75rem 2rem; font-weight: 700; font-size: 1.05rem;">
+                <span>💾</span> บันทึกทั้งหมด
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let rowCount = 1;
+
+function triggerFileInput(index) {
+    const input = document.getElementById(`fileInput_${index}`);
+    if (input) input.click();
+}
+
+function previewSelectedImage(input, index) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = document.getElementById(`previewImg_${index}`);
+            if (preview) {
+                preview.src = e.target.result;
+            }
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function updateRowBadges() {
+    const cards = document.querySelectorAll('.equipment-entry-card');
+    cards.forEach((card, idx) => {
+        const num = idx + 1;
+        const numBadge = card.querySelector('.row-number-badge');
+        const labelText = card.querySelector('.row-label-text');
+        const deleteBtn = card.querySelector('.delete-row-btn');
+        if (numBadge) numBadge.innerText = num;
+        if (labelText) labelText.innerText = `#${num}`;
+        if (deleteBtn) {
+            deleteBtn.style.display = cards.length > 1 ? 'inline-block' : 'none';
+        }
+    });
+    const countBadge = document.getElementById('itemCountBadge');
+    if (countBadge) {
+        countBadge.innerText = `รายการที่จะบันทึก: ${cards.length} รายการ`;
+    }
+}
+
+function addNewEquipmentRow() {
+    const container = document.getElementById('equipmentRowsContainer');
+    const newIndex = rowCount;
+    rowCount++;
+
+    const templateCard = document.getElementById('equipmentRow_0');
+    const newCard = templateCard.cloneNode(true);
+    newCard.id = `equipmentRow_${newIndex}`;
+
+    // Reset values in new row
+    newCard.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+    newCard.querySelectorAll('input[type="number"]').forEach(input => input.value = '1');
+    
+    // Update file input and preview
+    const fileInput = newCard.querySelector('input[type="file"]');
+    fileInput.id = `fileInput_${newIndex}`;
+    fileInput.value = '';
+    fileInput.setAttribute('onchange', `previewSelectedImage(this, ${newIndex})`);
+
+    const previewImg = newCard.querySelector('img');
+    previewImg.id = `previewImg_${newIndex}`;
+    previewImg.src = "{{ url_for('static', filename='uploads/multimeter.svg') }}";
+
+    const uploadWrapper = newCard.querySelector('.image-upload-wrapper');
+    uploadWrapper.setAttribute('onclick', `triggerFileInput(${newIndex})`);
+
+    const deleteBtn = newCard.querySelector('.delete-row-btn');
+    deleteBtn.setAttribute('onclick', `removeEquipmentRow(${newIndex})`);
+    deleteBtn.style.display = 'inline-block';
+
+    container.appendChild(newCard);
+    updateRowBadges();
+
+    // Smooth scroll to newly added row
+    newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function removeEquipmentRow(index) {
+    const row = document.getElementById(`equipmentRow_${index}`);
+    if (row && document.querySelectorAll('.equipment-entry-card').length > 1) {
+        row.remove();
+        updateRowBadges();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateRowBadges();
+});
+</script>
+{% endblock %}

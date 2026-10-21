@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}สมัครสมาชิกใหม่{% endblock %}
+
+{% block content %}
+<div style="max-width: 580px; margin: 2rem auto;">
+    <div class="card">
+        <div class="card-body" style="padding: 2.25rem;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h1 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">สมัครสมาชิกผู้ใช้งาน</h1>
+                <p style="font-size: 0.875rem; color: var(--text-muted);">ลงทะเบียนเพื่อเข้าใช้งานระบบยืม-คืนวัสดุและครุภัณฑ์</p>
+            </div>
+
+            <form action="{{ url_for('register') }}" method="POST">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ชื่อจริง <span style="color: var(--danger);">*</span></label>
+                        <input type="text" name="first_name" class="form-control" placeholder="เช่น ศุภกิจ" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">นามสกุล <span style="color: var(--danger);">*</span></label>
+                        <input type="text" name="last_name" class="form-control" placeholder="เช่น ก้าวหน้า" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">รหัสนักศึกษา / เลขบัตรประชาชน <span style="color: var(--danger);">*</span></label>
+                        <input type="text" name="student_or_citizen_id" class="form-control" placeholder="เช่น 6630128001 หรือเลข 13 หลัก" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">ประเภทผู้ใช้ <span style="color: var(--danger);">*</span></label>
+                        <select name="role" class="form-control" required>
+                            <option value="student">นักเรียน / นักศึกษา</option>
+                            <option value="teacher">อาจารย์ / บุคลากรทางการศึกษา</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">แผนกวิชา / สังกัดหน่วยงาน</label>
+                    <input type="text" name="department" class="form-control" placeholder="เช่น แผนกวิชาช่างอิเล็กทรอนิกส์, แผนกวิชาช่างยนต์">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">อีเมลสำหรับเข้าสู่ระบบ <span style="color: var(--danger);">*</span></label>
+                        <input type="email" name="email" class="form-control" placeholder="student@nonghan.ac.th" required>
+                        <div class="form-text">ใช้สำหรับรับการแจ้งเตือนผลอนุมัติและกำหนดส่งคืน</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เบอร์โทรศัพท์ติดต่อ</label>
+                        <input type="tel" name="phone_number" class="form-control" placeholder="08x-xxx-xxxx">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">LINE User ID (สำหรับการแจ้งเตือนทาง LINE)</label>
+                    <input type="text" name="line_user_id" class="form-control" placeholder="เช่น U98234xxxxxxx (ไม่ระบุได้)">
+                    <div class="form-text">สามารถระบุภายหลังได้ในหน้าโปรไฟล์เพื่อรับการแจ้งเตือนผ่าน LINE Official</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ตั้งรหัสผ่าน <span style="color: var(--danger);">*</span></label>
+                    <input type="password" name="password" class="form-control" placeholder="อย่างน้อย 6 ตัวอักษร" required minlength="6">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 0.95rem; margin-top: 0.5rem;">
+                    ยืนยันการสมัครสมาชิก
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 1.5rem; font-size: 0.875rem; color: var(--text-muted);">
+                มีบัญชีผู้ใช้อยู่แล้ว? <a href="{{ url_for('login') }}" style="color: var(--accent-blue); font-weight: 600;">เข้าสู่ระบบ</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
