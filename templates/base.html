@@ -31,22 +31,20 @@
 </head>
 <body>
     <div class="app-layout">
-        {% if request.endpoint != 'index' %}
+        {% if current_user %}
         <!-- Mobile Topbar (< 920px) -->
         <header class="mobile-topbar">
-            <a href="{{ url_for('index') }}" class="brand" style="gap: 0.6rem;">
+            <a href="{{ url_for('catalog') }}" class="brand" style="gap: 0.6rem;">
                 <div class="brand-icon" style="width: 32px; height: 32px; font-size: 1rem;">📦</div>
                 <div class="brand-title">
                     <span class="main-text" style="font-size: 0.95rem;">ระบบยืม-คืน</span>
                 </div>
             </a>
             <div style="display: flex; align-items: center; gap: 0.65rem;">
-                {% if current_user %}
-                    <a href="{{ url_for('notifications_page') }}" class="notif-btn" style="width: 36px; height: 36px; font-size: 1rem;">
-                        <span>🔔</span>
-                        {% if unread_count > 0 %}<span class="notif-badge" style="font-size: 0.6rem; height: 16px; min-width: 16px;">{{ unread_count }}</span>{% endif %}
-                    </a>
-                {% endif %}
+                <a href="{{ url_for('notifications_page') }}" class="notif-btn" style="width: 36px; height: 36px; font-size: 1rem;">
+                    <span>🔔</span>
+                    {% if unread_count > 0 %}<span class="notif-badge" style="font-size: 0.6rem; height: 16px; min-width: 16px;">{{ unread_count }}</span>{% endif %}
+                </a>
                 <button type="button" id="sidebarToggle" class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.65rem; font-size: 1.15rem;">
                     ☰
                 </button>
@@ -56,11 +54,11 @@
         <!-- Sidebar Backdrop for Mobile -->
         <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
 
-        <!-- LEFT SIDEBAR NAVIGATION (ย้ายแถบนำทางมาไว้ทางด้านซ้าย) -->
+        <!-- LEFT SIDEBAR NAVIGATION (แสดงเฉพาะเมื่อเข้าสู่ระบบแล้วเท่านั้น) -->
         <aside class="app-sidebar" id="appSidebar">
             <!-- Sidebar Header: Brand -->
             <div class="sidebar-header">
-                <a href="{{ url_for('index') }}" class="brand">
+                <a href="{{ url_for('catalog') if current_user.role not in ['admin', 'staff'] else url_for('admin_requests') }}" class="brand">
                     <div class="brand-icon">📦</div>
                     <div class="brand-title">
                         <span class="main-text">ระบบยืม-คืน</span>
@@ -72,119 +70,92 @@
 
             <!-- Navigation Menu -->
             <nav class="sidebar-menu">
-                {% if not current_user %}
-                    <div class="sidebar-section-title">เข้าใช้งานระบบ</div>
-                    <a href="{{ url_for('index') }}" class="sidebar-link {% if request.endpoint == 'index' %}active{% endif %}">
-                        <span class="sidebar-icon">🏠</span>
-                        <span>หน้าแรก</span>
-                    </a>
-                    <a href="{{ url_for('login') }}" class="sidebar-link {% if request.endpoint == 'login' %}active{% endif %}">
-                        <span class="sidebar-icon">🔑</span>
-                        <span>เข้าสู่ระบบ</span>
-                    </a>
-                    <a href="{{ url_for('register') }}" class="sidebar-link {% if request.endpoint == 'register' %}active{% endif %}">
-                        <span class="sidebar-icon">📝</span>
-                        <span>สมัครสมาชิก</span>
-                    </a>
-                {% else %}
-                    <div class="sidebar-section-title">เมนูผู้ใช้งาน / ผู้ยืม</div>
-                    <a href="{{ url_for('catalog') }}" class="sidebar-link {% if request.endpoint == 'catalog' %}active{% endif %}">
-                        <span class="sidebar-icon">🔍</span>
-                        <span>คลังวัสดุ/ครุภัณฑ์</span>
-                    </a>
+                <div class="sidebar-section-title">เมนูผู้ใช้งาน / ผู้ยืม</div>
+                <a href="{{ url_for('catalog') }}" class="sidebar-link {% if request.endpoint == 'catalog' %}active{% endif %}">
+                    <span class="sidebar-icon">🔍</span>
+                    <span>คลังวัสดุ/ครุภัณฑ์</span>
+                </a>
 
-                    <!-- User Profile: View Only -->
-                    <a href="{{ url_for('profile') }}" class="sidebar-link {% if request.endpoint == 'profile' %}active{% endif %}">
-                        <span class="sidebar-icon">👤</span>
-                        <span>ข้อมูลส่วนตัว / ประวัติยืม</span>
-                    </a>
+                <!-- User Profile: View Only -->
+                <a href="{{ url_for('profile') }}" class="sidebar-link {% if request.endpoint == 'profile' %}active{% endif %}">
+                    <span class="sidebar-icon">👤</span>
+                    <span>ข้อมูลส่วนตัว / ประวัติยืม</span>
+                </a>
 
-                    <a href="{{ url_for('notifications_page') }}" class="sidebar-link {% if request.endpoint == 'notifications_page' %}active{% endif %}">
-                        <span class="sidebar-icon">🔔</span>
-                        <span>การแจ้งเตือน</span>
-                        {% if unread_count > 0 %}
-                            <span class="badge badge-danger" style="margin-left: auto; font-size: 0.7rem; padding: 0.15rem 0.5rem;">{{ unread_count }}</span>
+                <a href="{{ url_for('notifications_page') }}" class="sidebar-link {% if request.endpoint == 'notifications_page' %}active{% endif %}">
+                    <span class="sidebar-icon">🔔</span>
+                    <span>การแจ้งเตือน</span>
+                    {% if unread_count > 0 %}
+                        <span class="badge badge-danger" style="margin-left: auto; font-size: 0.7rem; padding: 0.15rem 0.5rem;">{{ unread_count }}</span>
+                    {% endif %}
+                </a>
+
+                <!-- Staff & Admin Section -->
+                {% if current_user.role in ['admin', 'staff'] %}
+                    <div class="sidebar-section-title">งานเจ้าหน้าที่ / ผู้ดูแล</div>
+                    <a href="{{ url_for('admin_requests') }}" class="sidebar-link {% if request.endpoint == 'admin_requests' %}active{% endif %}">
+                        <span class="sidebar-icon">📋</span>
+                        <span>จัดการคำขอยืม</span>
+                        {% if pending_requests_count > 0 %}
+                            <span class="badge badge-warning" style="margin-left: auto; font-size: 0.7rem; padding: 0.15rem 0.5rem;">{{ pending_requests_count }}</span>
                         {% endif %}
                     </a>
-
-                    <!-- Staff & Admin Section -->
-                    {% if current_user.role in ['admin', 'staff'] %}
-                        <div class="sidebar-section-title">งานเจ้าหน้าที่ / ผู้ดูแล</div>
-                        <a href="{{ url_for('admin_requests') }}" class="sidebar-link {% if request.endpoint == 'admin_requests' %}active{% endif %}">
-                            <span class="sidebar-icon">📋</span>
-                            <span>จัดการคำขอยืม</span>
-                            {% if pending_requests_count > 0 %}
-                                <span class="badge badge-warning" style="margin-left: auto; font-size: 0.7rem; padding: 0.15rem 0.5rem;">{{ pending_requests_count }}</span>
-                            {% endif %}
+                    <a href="{{ url_for('admin_returns') }}" class="sidebar-link {% if request.endpoint == 'admin_returns' %}active{% endif %}">
+                        <span class="sidebar-icon">📥</span>
+                        <span>รับคืน / ค่าปรับ</span>
+                    </a>
+                    <a href="{{ url_for('admin_equipment') }}" class="sidebar-link {% if request.endpoint in ['admin_equipment', 'new_equipment_page'] %}active{% endif %}">
+                        <span class="sidebar-icon">🛠️</span>
+                        <span>จัดการอุปกรณ์</span>
+                    </a>
+                    <a href="{{ url_for('admin_categories') }}" class="sidebar-link {% if request.endpoint == 'admin_categories' %}active{% endif %}">
+                        <span class="sidebar-icon">🏷️</span>
+                        <span>จัดการประเภท</span>
+                    </a>
+                    <a href="{{ url_for('purchase_orders_list') }}" class="sidebar-link {% if request.endpoint in ['purchase_orders_list', 'purchase_order_new', 'purchase_order_detail', 'suppliers_list'] %}active{% endif %}">
+                        <span class="sidebar-icon">🛒</span>
+                        <span>สั่งซื้อพัสดุ/ครุภัณฑ์</span>
+                    </a>
+                    <a href="{{ url_for('goods_receiving') }}" class="sidebar-link {% if request.endpoint in ['goods_receiving', 'goods_receiving_new', 'goods_receiving_detail'] %}active{% endif %}">
+                        <span class="sidebar-icon">📦</span>
+                        <span>รับเข้าวัสดุ/ครุภัณฑ์</span>
+                    </a>
+                    {% if current_user.role == 'admin' %}
+                        <a href="{{ url_for('admin_users') }}" class="sidebar-link {% if request.endpoint == 'admin_users' %}active{% endif %}">
+                            <span class="sidebar-icon">👥</span>
+                            <span>จัดการผู้ใช้</span>
                         </a>
-                        <a href="{{ url_for('admin_returns') }}" class="sidebar-link {% if request.endpoint == 'admin_returns' %}active{% endif %}">
-                            <span class="sidebar-icon">📥</span>
-                            <span>รับคืน / ค่าปรับ</span>
-                        </a>
-                        <a href="{{ url_for('admin_equipment') }}" class="sidebar-link {% if request.endpoint in ['admin_equipment', 'new_equipment_page'] %}active{% endif %}">
-                            <span class="sidebar-icon">🛠️</span>
-                            <span>จัดการอุปกรณ์</span>
-                        </a>
-                        <a href="{{ url_for('admin_categories') }}" class="sidebar-link {% if request.endpoint == 'admin_categories' %}active{% endif %}">
-                            <span class="sidebar-icon">🏷️</span>
-                            <span>จัดการประเภท</span>
-                        </a>
-                        <a href="{{ url_for('purchase_orders_list') }}" class="sidebar-link {% if request.endpoint in ['purchase_orders_list', 'purchase_order_new', 'purchase_order_detail', 'suppliers_list'] %}active{% endif %}">
-                            <span class="sidebar-icon">🛒</span>
-                            <span>สั่งซื้อพัสดุ/ครุภัณฑ์</span>
-                        </a>
-                        <a href="{{ url_for('goods_receiving') }}" class="sidebar-link {% if request.endpoint in ['goods_receiving', 'goods_receiving_new', 'goods_receiving_detail'] %}active{% endif %}">
-                            <span class="sidebar-icon">📦</span>
-                            <span>รับเข้าวัสดุ/ครุภัณฑ์</span>
-                        </a>
-                        {% if current_user.role == 'admin' %}
-                            <a href="{{ url_for('admin_users') }}" class="sidebar-link {% if request.endpoint == 'admin_users' %}active{% endif %}">
-                                <span class="sidebar-icon">👥</span>
-                                <span>จัดการผู้ใช้</span>
-                            </a>
-                            <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
-                                <span class="sidebar-icon">📊</span>
-                                <span>แดชบอร์ด</span>
-                            </a>
-                        {% endif %}
-                        <div class="sidebar-section-title">เอกสาร & รายงาน</div>
-                        <a href="{{ url_for('report_monthly') }}" class="sidebar-link {% if request.endpoint == 'report_monthly' %}active{% endif %}">
-                            <span class="sidebar-icon">📅</span>
-                            <span>รายงานรายเดือน</span>
-                        </a>
-                        <a href="{{ url_for('report_equipment_register') }}" class="sidebar-link {% if request.endpoint == 'report_equipment_register' %}active{% endif %}">
-                            <span class="sidebar-icon">📋</span>
-                            <span>ทะเบียนครุภัณฑ์</span>
+                        <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                            <span class="sidebar-icon">📊</span>
+                            <span>แดชบอร์ด</span>
                         </a>
                     {% endif %}
+                    <div class="sidebar-section-title">เอกสาร & รายงาน</div>
+                    <a href="{{ url_for('report_monthly') }}" class="sidebar-link {% if request.endpoint == 'report_monthly' %}active{% endif %}">
+                        <span class="sidebar-icon">📅</span>
+                        <span>รายงานรายเดือน</span>
+                    </a>
+                    <a href="{{ url_for('report_equipment_register') }}" class="sidebar-link {% if request.endpoint == 'report_equipment_register' %}active{% endif %}">
+                        <span class="sidebar-icon">📋</span>
+                        <span>ทะเบียนครุภัณฑ์</span>
+                    </a>
                 {% endif %}
             </nav>
 
-            <!-- Sidebar Footer: User Card / Login -->
+            <!-- Sidebar Footer: User Card / Logout -->
             <div class="sidebar-footer">
-                {% if current_user %}
-                    <a href="{{ url_for('profile') }}" class="sidebar-user-card" style="text-decoration: none;">
-                        <div class="avatar-initial">{{ current_user.first_name[0] }}</div>
-                        <div class="sidebar-user-info">
-                            <div class="sidebar-user-name">{{ current_user.full_name }}</div>
-                            <div class="sidebar-user-role">
-                                <span class="badge {{ current_user.role_badge_class }}" style="padding: 0.12rem 0.5rem; font-size: 0.68rem;">{{ current_user.role_display }}</span>
-                            </div>
+                <a href="{{ url_for('profile') }}" class="sidebar-user-card" style="text-decoration: none;">
+                    <div class="avatar-initial">{{ current_user.first_name[0] }}</div>
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-user-name">{{ current_user.full_name }}</div>
+                        <div class="sidebar-user-role">
+                            <span class="badge {{ current_user.role_badge_class }}" style="padding: 0.12rem 0.5rem; font-size: 0.68rem;">{{ current_user.role_display }}</span>
                         </div>
-                    </a>
-                    <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; margin-top: 0.65rem;">
-                        🚪 ออกจากระบบ
-                    </a>
-                {% else %}
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center;">
-                            เข้าสู่ระบบ
-                        </a>
-                        <a href="{{ url_for('register') }}" class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center;">
-                            สมัครสมาชิก
-                        </a>
                     </div>
-                {% endif %}
+                </a>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center; margin-top: 0.65rem;">
+                    🚪 ออกจากระบบ
+                </a>
             </div>
         </aside>
         {% endif %}
