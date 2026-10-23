@@ -3,14 +3,14 @@
 {% block title %}เข้าสู่ระบบ{% endblock %}
 
 {% block content %}
-<div style="max-width: 440px; margin: 2rem auto;">
-    <div style="margin-bottom: 1.25rem;">
+<div class="auth-container">
+    <div style="margin-bottom: 1rem;">
         <a href="{{ url_for('index') }}" style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500;">
             ← กลับหน้าแรก
         </a>
     </div>
     <div class="card">
-        <div class="card-body" style="padding: 2.25rem;">
+        <div class="card-body auth-card-body">
             <div style="text-align: center; margin-bottom: 2rem;">
                 <div style="width: 52px; height: 52px; background: var(--primary); color: white; border-radius: var(--radius-lg); display: inline-flex; align-items: center; justify-content: center; font-size: 1.6rem; margin-bottom: 0.75rem;">
                     📦

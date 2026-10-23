@@ -652,7 +652,32 @@ code, .font-mono, [data-mono] {
   border: 1.5px solid white;
 }
 
+/* Auth Container (Login / Register full-screen responsive) */
+.auth-container {
+  width: 100%;
+  max-width: 520px;
+  margin: 1.5rem auto 3rem;
+  padding: 0 clamp(0.5rem, 2vw, 1rem);
+}
+
+.auth-card-body {
+  padding: clamp(1.25rem, 5vw, 2.25rem);
+}
+
 @media (max-width: 1023px) {
+  .app-layout {
+    display: block !important;
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .app-main {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+  }
+
   .guest-nav-links {
     display: none;
   }
@@ -665,12 +690,15 @@ code, .font-mono, [data-mono] {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 62px;
+    height: 60px;
+    width: 100%;
     background: #ffffff;
     border-bottom: 1px solid var(--border);
-    padding: 0 1.25rem;
+    padding: 0 clamp(0.75rem, 3vw, 1.25rem);
     position: sticky;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 45;
   }
 
