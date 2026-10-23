@@ -22,10 +22,14 @@
     <meta name="twitter:description" content="ระบบสารสนเทศบริการยืม-คืนวัสดุและครุภัณฑ์ออนไลน์ วิทยาลัยการอาชีพหนองหาน">
 
     <title>{% block title %}ระบบบริการยืม-คืนวัสดุและครุภัณฑ์{% endblock %} | วิทยาลัยการอาชีพหนองหาน</title>
-    <!-- Google Fonts Preconnect & Font Stacks -->
+    <!-- Google Fonts Preconnect & Font Stacks: Noto Sans Thai & Prompt -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5.3.3 Mobile-First Framework -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
@@ -341,8 +345,30 @@
             <span class="bottom-nav-label">เมนูทั้งหมด</span>
         </button>
     </nav>
+    {% else %}
+    <!-- MOBILE BOTTOM QUICK NAVIGATION BAR (Guest / เมนูหลักบนมือถือ) -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNavGuest">
+        <a href="{{ url_for('index') }}" class="bottom-nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+            <span class="bottom-nav-icon">🏠</span>
+            <span class="bottom-nav-label">หน้าแรก</span>
+        </a>
+        <a href="{{ url_for('catalog') }}" class="bottom-nav-item {% if request.endpoint == 'catalog' %}active{% endif %}">
+            <span class="bottom-nav-icon">🔍</span>
+            <span class="bottom-nav-label">คลังพัสดุ</span>
+        </a>
+        <a href="{{ url_for('login') }}" class="bottom-nav-item {% if request.endpoint == 'login' %}active{% endif %}">
+            <span class="bottom-nav-icon">🔑</span>
+            <span class="bottom-nav-label">เข้าสู่ระบบ</span>
+        </a>
+        <a href="{{ url_for('register') }}" class="bottom-nav-item {% if request.endpoint == 'register' %}active{% endif %}">
+            <span class="bottom-nav-icon">📝</span>
+            <span class="bottom-nav-label">สมัครสมาชิก</span>
+        </a>
+    </nav>
     {% endif %}
 
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
 </body>

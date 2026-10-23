@@ -3,37 +3,37 @@
 {% block title %}เข้าสู่ระบบ{% endblock %}
 
 {% block content %}
-<div class="auth-container">
-    <div style="margin-bottom: 1rem;">
-        <a href="{{ url_for('index') }}" style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500;">
+<div class="auth-container w-100">
+    <div style="margin-bottom: 16px;">
+        <a href="{{ url_for('index') }}" style="display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); text-decoration: none; font-size: 15px; font-weight: 500;">
             ← กลับหน้าแรก
         </a>
     </div>
-    <div class="card">
+    <div class="card w-100">
         <div class="card-body auth-card-body">
-            <div style="text-align: center; margin-bottom: 2rem;">
+            <div style="text-align: center; margin-bottom: 24px;">
                 <div style="width: 52px; height: 52px; background: var(--primary); color: white; border-radius: var(--radius-lg); display: inline-flex; align-items: center; justify-content: center; font-size: 1.6rem; margin-bottom: 0.75rem;">
                     📦
                 </div>
-                <h1 style="font-size: 1.4rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.25rem;">เข้าสู่ระบบ</h1>
-                <p style="font-size: 0.875rem; color: var(--text-muted);">ระบบยืม-คืนวัสดุและครุภัณฑ์ วิทยาลัยการอาชีพหนองหาน</p>
+                <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">เข้าสู่ระบบ</h1>
+                <p style="font-size: 15px; color: var(--text-muted); margin-bottom: 0;">ระบบยืม-คืนวัสดุและครุภัณฑ์ วิทยาลัยการอาชีพหนองหาน</p>
             </div>
 
             <!-- Standard Login Form -->
             <form action="{{ url_for('login') }}" method="POST">
-                <div class="form-group">
+                <div class="form-group mb-3">
                     <label class="form-label">อีเมลผู้ใช้งาน</label>
-                    <input type="email" name="email" class="form-control" placeholder="เช่น student@nonghan.ac.th" required autofocus>
+                    <input type="email" name="email" class="form-control" placeholder="เช่น student@nonghan.ac.th" required autofocus autocomplete="email">
                 </div>
 
-                <div class="form-group">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <div class="form-group mb-3">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         <label class="form-label" style="margin-bottom: 0;">รหัสผ่าน</label>
                     </div>
-                    <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                    <input type="password" name="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
                 </div>
 
-                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 0.95rem; margin-top: 0.5rem;">
+                <button type="submit" class="btn btn-primary w-100" style="padding: 12px; font-size: 16px; font-weight: 600; margin-top: 8px;">
                     เข้าสู่ระบบ
                 </button>
             </form>
