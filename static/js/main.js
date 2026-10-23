@@ -54,11 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 5. Mobile Sidebar Toggle Handlers
+    // 5. Sidebar Toggle & Responsive Navigation Handlers
     const sidebar = document.getElementById('appSidebar');
     const backdrop = document.getElementById('sidebarBackdrop');
     const toggleBtn = document.getElementById('sidebarToggle');
     const closeBtn = document.getElementById('sidebarCloseBtn');
+    const collapseBtn = document.getElementById('sidebarCollapseBtn');
+    const bottomNavMenuBtn = document.getElementById('bottomNavMenuToggle');
 
     function openSidebar() {
         if (sidebar) sidebar.classList.add('open');
@@ -73,8 +75,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+    if (bottomNavMenuBtn) bottomNavMenuBtn.addEventListener('click', openSidebar);
     if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
     if (backdrop) backdrop.addEventListener('click', closeSidebar);
+
+    // Close mobile drawer when a link is clicked
+    if (sidebar) {
+        sidebar.querySelectorAll('.sidebar-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) {
+                    closeSidebar();
+                }
+            });
+        });
+    }
+
+    // Desktop Sidebar Collapse with LocalStorage preference
+    if (collapseBtn && sidebar) {
+        // Restore saved preference on load for wide screens
+        const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (isCollapsed && window.innerWidth >= 1024) {
+            sidebar.classList.add('collapsed');
+        }
+
+        collapseBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            const nowCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', nowCollapsed);
+        });
+    }
+
+    // 6. Guest Mobile Menu Toggle Handler
+    const guestMenuToggle = document.getElementById('guestMenuToggle');
+    const guestMobileMenu = document.getElementById('guestMobileMenu');
+    if (guestMenuToggle && guestMobileMenu) {
+        guestMenuToggle.addEventListener('click', () => {
+            guestMobileMenu.classList.toggle('open');
+        });
+    }
 });
 
 // Modal helpers
