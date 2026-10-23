@@ -46,43 +46,13 @@
                 </div>
             </a>
 
-            <!-- Desktop Links -->
-            <nav class="guest-nav-links">
-                <a href="{{ url_for('index') }}" class="guest-link {% if request.endpoint == 'index' %}active{% endif %}">
-                    <span>🏠</span> หน้าแรก
-                </a>
-                <a href="{{ url_for('catalog') }}" class="guest-link {% if request.endpoint == 'catalog' %}active{% endif %}">
-                    <span>🔍</span> คลังวัสดุ/ครุภัณฑ์
-                </a>
+            <!-- Action Buttons: เฉพาะเข้าสู่ระบบและสมัครสมาชิกใหม่ -->
+            <div class="guest-nav-actions">
                 <a href="{{ url_for('login') }}" class="btn btn-secondary btn-sm">
                     <span>🔑</span> เข้าสู่ระบบ
                 </a>
                 <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">
-                    <span>📝</span> สมัครสมาชิก
-                </a>
-            </nav>
-
-            <!-- Mobile Hamburger Button -->
-            <button type="button" id="guestMenuToggle" class="guest-menu-btn" aria-label="สลับเมนู">
-                ☰
-            </button>
-        </div>
-
-        <!-- Mobile Guest Dropdown Menu -->
-        <div id="guestMobileMenu" class="guest-mobile-menu">
-            <a href="{{ url_for('index') }}" class="guest-mobile-link {% if request.endpoint == 'index' %}active{% endif %}">
-                <span>🏠</span> หน้าแรก
-            </a>
-            <a href="{{ url_for('catalog') }}" class="guest-mobile-link {% if request.endpoint == 'catalog' %}active{% endif %}">
-                <span>🔍</span> คลังวัสดุ/ครุภัณฑ์
-            </a>
-            <div class="guest-mobile-divider"></div>
-            <div style="display: flex; gap: 0.5rem; flex-direction: column;">
-                <a href="{{ url_for('login') }}" class="btn btn-secondary btn-sm" style="width: 100%; justify-content: center;">
-                    <span>🔑</span> เข้าสู่ระบบ
-                </a>
-                <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center;">
-                    <span>📝</span> สมัครสมาชิก
+                    <span>📝</span> สมัครสมาชิกใหม่
                 </a>
             </div>
         </div>

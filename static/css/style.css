@@ -441,6 +441,12 @@ code, .font-mono, [data-mono] {
   gap: 0.75rem;
 }
 
+.guest-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
 .guest-link {
   font-family: var(--font-heading);
   font-size: 0.88rem;
@@ -973,7 +979,13 @@ code, .font-mono, [data-mono] {
   }
 
   .guest-menu-btn {
-    display: block;
+    display: none;
+  }
+
+  .guest-nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
 
   .mobile-topbar {
@@ -2253,6 +2265,24 @@ code, .font-mono, [data-mono] {
 
   .brand-title .main-text {
     font-size: 0.95rem;
+  }
+
+  .guest-nav-inner {
+    padding: 0.65rem 0.85rem;
+  }
+
+  .guest-nav-actions {
+    gap: 0.35rem;
+  }
+
+  .guest-nav-actions .btn {
+    padding: 0.35rem 0.6rem !important;
+    font-size: 0.8rem !important;
+    min-height: 36px;
+  }
+
+  .guest-navbar .brand-title .sub-text {
+    display: none;
   }
 
   .btn-sm {
