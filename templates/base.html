@@ -35,7 +35,7 @@
 </head>
 <body class="{% if current_user %}logged-in{% else %}guest-layout{% endif %}">
     {% block guest_navbar %}
-    {% if not current_user and request.endpoint != 'index' %}
+    {% if not current_user and request.endpoint not in ['index', 'login', 'register'] %}
     <!-- GUEST TOP NAVIGATION BAR (สำหรับผู้ใช้งานก่อนเข้าสู่ระบบ) -->
     <header class="guest-navbar">
         <div class="guest-nav-inner">
