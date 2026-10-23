@@ -12,7 +12,7 @@
     </div>
 </div>
 
-<div class="card" style="max-width: 800px; margin: 0 auto;">
+<div class="card" style="width: 100%; margin: 0 auto;">
     <div class="card-body" style="padding: 0;">
         {% if notifications %}
             <div style="display: flex; flex-direction: column;">
@@ -27,8 +27,8 @@
                             {% else %}🔔{% endif %}
                         </div>
 
-                        <div style="flex: 1;">
-                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.25rem;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.25rem;">
                                 <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
                                     {{ n.title }}
                                 </h3>

@@ -43,7 +43,7 @@
 </div>
 
 <!-- Suppliers List -->
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.25rem;">
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 1.25rem;">
     {% if suppliers %}
         {% for sup in suppliers %}
             <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
