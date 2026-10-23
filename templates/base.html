@@ -90,31 +90,55 @@
     {% endif %}
 
     {% if current_user %}
-    <!-- Mobile & Tablet Topbar (< 1024px) -->
+    <!-- Mobile & Tablet Topbar (< 1024px) - Institutional Academic Mobile Header -->
     <header class="mobile-topbar">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <button type="button" id="sidebarToggle" class="mobile-toggle-btn" aria-label="เปิดเมนูนำทาง">
-                ☰
-            </button>
-            <a href="{{ url_for('catalog') }}" class="brand" style="gap: 0.6rem;">
-                <div class="brand-icon" style="width: 34px; height: 34px; font-size: 1.05rem;">📦</div>
-                <div class="brand-title">
-                    <span class="main-text" style="font-size: 0.95rem;">ระบบยืม-คืน</span>
-                    <span class="sub-text" style="font-size: 0.68rem;">วก.หนองหาน</span>
-                </div>
-            </a>
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <a href="{{ url_for('notifications_page') }}" class="notif-btn" title="การแจ้งเตือน">
-                <span>🔔</span>
-                {% if unread_count > 0 %}<span class="notif-badge">{{ unread_count }}</span>{% endif %}
-            </a>
+        <div class="mobile-topbar-left">
             <a href="{{ url_for('profile') }}" class="mobile-user-avatar" title="{{ current_user.full_name }}">
                 {{ current_user.first_name[0] }}
             </a>
+            <button type="button" id="sidebarToggle" class="mobile-toggle-btn" aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง">
+                ☰
+            </button>
+        </div>
+
+        <div class="mobile-topbar-center">
+            <span class="mobile-app-title">NONGHAN BORROW</span>
+            <span class="mobile-app-subtitle">วท.หนองหาน</span>
+        </div>
+
+        <div class="mobile-topbar-right">
+            <a href="{{ url_for('notifications_page') }}" class="mobile-top-btn" title="การแจ้งเตือน">
+                <span>🔔</span>
+                {% if unread_count > 0 %}<span class="notif-badge">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('logout') }}" class="mobile-top-btn mobile-logout-btn" title="ออกจากระบบ">
+                <span>⏻</span>
+            </a>
         </div>
     </header>
+
+    <!-- Mobile Sub-Header Context Bar (< 1024px) -->
+    <div class="mobile-subbar">
+        <div class="subbar-chip location-chip">
+            <span class="chip-icon">📍</span>
+            <span>วท.หนองหาน</span>
+        </div>
+        <div class="subbar-pill">
+            {% block page_pill %}
+                {% if request.endpoint == 'profile' %}ข้อมูลผู้ใช้งาน
+                {% elif request.endpoint == 'catalog' %}คลังพัสดุ
+                {% elif request.endpoint == 'admin_requests' %}คำขอยืม
+                {% elif request.endpoint == 'admin_returns' %}รับคืน/ค่าปรับ
+                {% elif request.endpoint == 'admin_dashboard' %}แดชบอร์ด
+                {% elif request.endpoint == 'notifications_page' %}แจ้งเตือน
+                {% else %}ระบบยืม-คืน{% endif %}
+            {% endblock %}
+        </div>
+        <div class="subbar-chip date-chip" id="mobileCurrentDate">
+            <!-- Dynamic Date: e.g. 23 Oct 2026 -->
+            23 Oct 2026
+        </div>
+    </div>
     {% endif %}
 
     <div class="app-layout">
@@ -325,8 +349,8 @@
             </a>
         {% else %}
             <a href="{{ url_for('profile') }}" class="bottom-nav-item {% if request.endpoint == 'profile' %}active{% endif %}">
-                <span class="bottom-nav-icon">👤</span>
-                <span class="bottom-nav-label">ประวัติยืม</span>
+                <span class="bottom-nav-icon">🪪</span>
+                <span class="bottom-nav-label">e-บัตร/โปรไฟล์</span>
             </a>
         {% endif %}
 
@@ -341,8 +365,8 @@
         </a>
 
         <button type="button" class="bottom-nav-item" id="bottomNavMenuToggle">
-            <span class="bottom-nav-icon">☰</span>
-            <span class="bottom-nav-label">เมนูทั้งหมด</span>
+            <span class="bottom-nav-icon">⚙️</span>
+            <span class="bottom-nav-label">ตั้งค่า/เมนู</span>
         </button>
     </nav>
     {% else %}

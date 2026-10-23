@@ -515,47 +515,317 @@ code, .font-mono, [data-mono] {
    MOBILE TOPBAR & DRAWER (สำหรับแท็บเล็ตและมือถือ)
    ========================================================================== */
 
+/* ==========================================================================
+   MOBILE INSTITUTIONAL TOPBAR & SUBBAR (< 1024px)
+   สไตล์พอร์ทัลสถาบันการศึกษา (Forest Green Gradient & Clean Context Bar)
+   ========================================================================== */
+
 .mobile-topbar {
   display: none;
 }
 
-.mobile-toggle-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  padding: 0.38rem 0.65rem;
-  font-size: 1.15rem;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  transition: var(--transition-fast);
+.mobile-subbar {
+  display: none;
 }
 
-.mobile-toggle-btn:hover {
-  background: var(--bg-subtle);
-}
+@media (max-width: 1023px) {
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    width: 100%;
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    padding: 0 16px;
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  }
 
-.mobile-user-avatar {
-  width: 36px;
-  height: 36px;
-  background: var(--primary);
-  color: white;
-  border-radius: var(--radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-heading);
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-decoration: none;
-  box-shadow: var(--shadow-xs);
+  .mobile-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .mobile-user-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #15803d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-heading);
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-decoration: none;
+    border: 2.5px solid rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    flex-shrink: 0;
+  }
+
+  .mobile-toggle-btn {
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    line-height: 1;
+    transition: var(--transition-fast);
+  }
+
+  .mobile-toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  .mobile-topbar-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    user-select: none;
+  }
+
+  .mobile-app-title {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+    color: #ffffff;
+    line-height: 1.2;
+  }
+
+  .mobile-app-subtitle {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.88);
+    font-weight: 400;
+    line-height: 1.1;
+  }
+
+  .mobile-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mobile-top-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    text-decoration: none;
+    position: relative;
+    transition: var(--transition-fast);
+  }
+
+  .mobile-top-btn:hover {
+    background: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+  }
+
+  .mobile-logout-btn {
+    font-size: 1.2rem;
+  }
+
+  /* Subbar Context Bar */
+  .mobile-subbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 44px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    font-size: 13px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    position: sticky;
+    top: 64px;
+    z-index: 44;
+  }
+
+  .location-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #15803d;
+    font-weight: 600;
+    font-size: 13px;
+  }
+
+  .subbar-pill {
+    background: #f1f5f9;
+    color: #0f172a;
+    font-weight: 600;
+    padding: 3px 14px;
+    border-radius: 9999px;
+    font-size: 13px;
+    letter-spacing: 0.01em;
+    border: 1px solid var(--border);
+  }
+
+  .date-chip {
+    color: #64748b;
+    font-family: var(--font-numeric);
+    font-size: 12.5px;
+    font-weight: 500;
+  }
 }
 
 .sidebar-backdrop {
   display: none;
+}
+
+/* ==========================================================================
+   SEGMENTED CONTROL & HERO FEATURE CARD (REFERENCE: UDRU STUDENT PORTAL)
+   ========================================================================== */
+
+.segmented-control {
+  display: flex;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-xs);
+}
+
+.segmented-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-decoration: none;
+}
+
+.segmented-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-subtle);
+}
+
+.segmented-btn.active {
+  background: #ecfdf5;
+  color: #15803d;
+  box-shadow: 0 1px 4px rgba(21, 128, 61, 0.15);
+}
+
+/* Hero Feature Card (Curriculum / Feature Highlight in Rich Forest Green) */
+.hero-feature-card {
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+  color: #ffffff;
+  border-radius: 18px;
+  padding: 22px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px -4px rgba(21, 128, 61, 0.28);
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+.hero-feature-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1.5px, transparent 1.5px);
+  background-size: 16px 16px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.hero-feature-title {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: #ffffff;
+  margin-bottom: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-feature-pill {
+  display: inline-block;
+  padding: 5px 16px;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Info List Card (The exact clean vertical cards from the reference screenshot) */
+.info-list-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.info-list-item {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.info-list-item:last-child {
+  border-bottom: none;
+}
+
+.info-list-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+
+.info-list-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.info-list-sub {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.4;
 }
 
 /* ==========================================================================
@@ -620,12 +890,13 @@ code, .font-mono, [data-mono] {
 }
 
 .bottom-nav-item.active {
-  color: var(--primary);
+  color: #15803d !important;
   font-weight: 700;
 }
 
 .bottom-nav-item.active .bottom-nav-icon {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  filter: drop-shadow(0 2px 4px rgba(21, 128, 61, 0.2));
 }
 
 .bottom-nav-badge {

@@ -1,6 +1,14 @@
 // Minimalist UI JavaScript Handlers
 
 document.addEventListener('DOMContentLoaded', () => {
+    // 0. Update Mobile Subbar Current Date (e.g. 23 Oct 2026)
+    const mobileDateEl = document.getElementById('mobileCurrentDate');
+    if (mobileDateEl) {
+        const today = new Date();
+        const options = { day: 'numeric', month: 'short', year: 'numeric' };
+        mobileDateEl.textContent = today.toLocaleDateString('en-GB', options);
+    }
+
     // 1. Flash alert dismiss
     document.querySelectorAll('.alert-close').forEach(btn => {
         btn.addEventListener('click', () => {
