@@ -1,0 +1,1054 @@
+{% extends "base.html" %}
+
+{% block title %}สร้างใบสั่งซื้อวัสดุและครุภัณฑ์ใหม่{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="margin-bottom: 0.35rem;">
+            <a href="{{ url_for('purchase_orders_list') }}" style="text-decoration: none; font-size: 0.85rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span>←</span> กลับไปหน้ารายการสั่งซื้อ
+            </a>
+        </div>
+        <h1 class="page-title">
+            <span>🛒</span> สร้างใบสั่งซื้อวัสดุและครุภัณฑ์ใหม่
+        </h1>
+        <p class="page-subtitle">เลือกบริษัทคู่ค้า ระบบจะแสดงสินค้าที่บริษัทขาย ค้นหาจากคลัง หรือคัดลอกจากประวัติการสั่งซื้อเดิม</p>
+    </div>
+    <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('reorderModal')">
+            <span>🔄</span> สั่งจากรายการเดิม
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('addSupplierModal')">
+            <span>🏢</span> + เพิ่มบริษัทคู่ค้าใหม่
+        </button>
+    </div>
+</div>
+
+<form id="purchaseOrderForm" method="POST" action="{{ url_for('purchase_order_new') }}">
+    <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+
+        <!-- 1. Header Information & Supplier Selector Card -->
+        <div class="card">
+            <div class="card-header" style="padding: 1.15rem 1.35rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <div style="font-weight: 700; font-family: var(--font-heading); font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>🏢</span> ข้อมูลใบสั่งซื้อและบริษัทคู่ค้า
+                </div>
+                <div style="font-size: 0.82rem; color: var(--text-muted); font-family: var(--font-numeric);">
+                    เลขที่แนะนำ: <strong style="color: var(--primary);">{{ suggested_po_number }}</strong>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 1.35rem;">
+                <div class="form-row" style="margin-bottom: 1.25rem;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">เลขที่ใบสั่งซื้อ (PO Number) *</label>
+                        <input type="text" name="po_number" id="poNumber" class="form-control" value="{{ suggested_po_number }}" required style="font-family: var(--font-numeric); font-weight: 600;">
+                        <span class="form-text">สามารถใช้เลขที่ระบบสร้างให้อัตโนมัติ หรือระบุตามเลขที่เอกสารจริง</span>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">วันที่สั่งซื้อ *</label>
+                        <input type="date" name="order_date" class="form-control" value="{{ today_date }}" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">กำหนดส่งมอบโดยประมาณ</label>
+                        <input type="date" name="expected_delivery_date" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Supplier Selection with live details -->
+                <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1.25rem; margin-top: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <label class="form-label" style="margin-bottom: 0; font-size: 0.92rem;">
+                            🏢 เลือกบริษัทคู่ค้า / ผู้จัดจำหน่าย *
+                        </label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" id="editSupplierBtn" class="btn btn-secondary btn-sm" style="display: none; padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="openEditSupplierModal()">
+                                <span>✏️</span> ดู/แก้ไขข้อมูลบริษัทนี้
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" onclick="openModal('addSupplierModal')">
+                                <span>➕</span> เพิ่มบริษัทใหม่
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <select name="supplier_id" id="supplierSelect" class="form-control" required style="font-weight: 600; flex: 2; min-width: 260px;" onchange="onSupplierChange(this.value)">
+                            <option value="">-- กรุณาเลือกบริษัทคู่ค้า / ร้านค้า --</option>
+                            {% for sup in suppliers %}
+                                <option value="{{ sup.supplier_id }}" {% if selected_supplier_id == sup.supplier_id %}selected{% endif %}>
+                                    {{ sup.company_name }} {% if sup.phone %}(โทร: {{ sup.phone }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Selected Supplier Info Card -->
+                    <div id="supplierInfoBox" style="display: none; margin-top: 1rem; padding: 0.85rem 1rem; background: white; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+                            <div>
+                                <span style="color: var(--text-muted);">ผู้ติดต่อ:</span>
+                                <strong id="supContactText" style="color: var(--text-main);">-</strong>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">เบอร์โทรศัพท์:</span>
+                                <strong id="supPhoneText" style="color: var(--text-main);">-</strong>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">อีเมล:</span>
+                                <span id="supEmailText" style="color: var(--text-main);">-</span>
+                            </div>
+                            <div>
+                                <span style="color: var(--text-muted);">เลขประจำตัวผู้เสียภาษี:</span>
+                                <span id="supTaxIdText" style="color: var(--text-main);">-</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border);">
+                            <span style="color: var(--text-muted);">ที่อยู่:</span>
+                            <span id="supAddressText" style="color: var(--text-main);">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Products Sold by This Supplier (Requirement: ถ้าเลือกแล้วจะมีสินค้าที่บริษัทขายโชว์ขึ้นด้วย) -->
+        <div class="card" id="supplierProductsCard">
+            <div class="card-header" style="padding: 1.15rem 1.35rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <div style="font-weight: 700; font-family: var(--font-heading); font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>📦</span> สินค้าที่บริษัทนี้จำหน่าย (Supplier Catalog)
+                        <span id="supplierProductBadge" class="badge badge-primary" style="font-size: 0.75rem; display: none;">0 รายการ</span>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                        คลิก <strong style="color: var(--success);">"+ เพิ่มลงในใบสั่งซื้อ"</strong> เพื่อนำสินค้านี้เข้าสู่ตารางสั่งซื้อทันที
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="button" id="addCompanyProductBtn" class="btn btn-secondary btn-sm" style="display: none;" onclick="openAddCompanyProductModal()">
+                        <span>➕</span> เพิ่มสินค้าใหม่ในแค็ตตาล็อกบริษัท
+                    </button>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 1.25rem;">
+                <!-- Filter box for supplier products -->
+                <div id="supplierProductsFilterRow" style="display: none; margin-bottom: 1rem;">
+                    <input type="text" id="supplierProductSearchInput" class="form-control" placeholder="🔍 กรองค้นหาสินค้าของบริษัทนี้..." oninput="filterSupplierProducts(this.value)">
+                </div>
+
+                <!-- Products container -->
+                <div id="supplierProductsLoading" style="display: none; text-align: center; padding: 2rem; color: var(--text-muted);">
+                    <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">⏳</div>
+                    <div>กำลังโหลดรายการสินค้าของบริษัท...</div>
+                </div>
+
+                <div id="supplierProductsEmptyHint" style="text-align: center; padding: 2.25rem 1.5rem; color: var(--text-muted); background: var(--bg-main); border-radius: var(--radius-sm); border: 1px dashed var(--border);">
+                    <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">👆</div>
+                    <h4 style="font-size: 1rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">กรุณาเลือกบริษัทคู่ค้าด้านบน</h4>
+                    <p style="font-size: 0.84rem; margin: 0;">เมื่อเลือกบริษัทแล้ว ระบบจะแสดงสินค้าทั้งหมดที่บริษัทนี้จำหน่าย ให้ท่านคลิกสั่งซื้อได้สะดวกทันที</p>
+                </div>
+
+                <div id="supplierProductsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+                    <!-- Dynamically populated via JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Add Items & Search Inventory Card (Requirement: ค้นหาจากชื่อวัสดุและครุภัณฑ์ หรือสั่งจากรายการเดิม) -->
+        <div class="card">
+            <div class="card-header" style="padding: 1.15rem 1.35rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <div style="font-weight: 700; font-family: var(--font-heading); font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>🔍</span> ค้นหาและเลือกรายการที่ต้องการสั่งซื้อ
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                        ค้นหาจากทะเบียนวัสดุ/ครุภัณฑ์ในระบบ หรือสั่งซ้ำจากประวัติการสั่งซื้อเดิม
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('reorderModal')">
+                        <span>🔄</span> สั่งจากรายการเดิม (Re-order)
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addCustomRow()">
+                        <span>➕</span> เพิ่มรายการทั่วไป (กำหนดเอง)
+                    </button>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 1.25rem;">
+                <!-- Live Search Box for Inventory -->
+                <div style="position: relative; margin-bottom: 0.75rem;">
+                    <label class="form-label" style="font-size: 0.88rem;">
+                        🔍 ค้นหาวัสดุหรือครุภัณฑ์ในคลังระบบ (พิมพ์ชื่อหรือรหัสพัสดุ):
+                    </label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="inventorySearchInput" class="form-control" placeholder="พิมพ์ชื่อ เช่น มัลติมิเตอร์, โปรเจคเตอร์, หัวแร้ง, สาย HDMI, หรือรหัส EQ-..." oninput="onInventorySearchInput(this.value)">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="clearInventorySearch()">
+                            ล้าง
+                        </button>
+                    </div>
+
+                    <!-- Search Results Dropdown Panel -->
+                    <div id="inventorySearchResults" style="display: none; position: absolute; left: 0; right: 0; top: 100%; z-index: 50; background: white; border: 1px solid var(--border-dark); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); max-height: 320px; overflow-y: auto; margin-top: 0.35rem;">
+                        <!-- Injected by JS -->
+                    </div>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                    💡 สามารถเลือกพัสดุที่มีในระบบ เพื่อให้เมื่อรับสินค้าแล้ว สามารถอัปเดตสต็อกคงเหลือเข้าคลังได้โดยอัตโนมัติ
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Purchase Order Items Draft Table -->
+        <div class="card">
+            <div class="card-header" style="padding: 1.15rem 1.35rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-weight: 700; font-family: var(--font-heading); font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>📋</span> ตารางรายการพัสดุ/ครุภัณฑ์ที่สั่งซื้อ
+                    <span id="orderItemsCountBadge" class="badge badge-primary" style="font-size: 0.75rem;">0 รายการ</span>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addCustomRow()">
+                    <span>➕</span> เพิ่มแถวใหม่
+                </button>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="table-responsive">
+                    <table class="table" id="orderItemsTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px; text-align: center;">ลำดับ</th>
+                                <th style="min-width: 250px;">ชื่อรายการวัสดุ/ครุภัณฑ์ *</th>
+                                <th style="width: 140px;">รหัส / รุ่น</th>
+                                <th style="width: 110px; text-align: center;">จำนวน *</th>
+                                <th style="width: 100px;">หน่วยนับ</th>
+                                <th style="width: 130px; text-align: right;">ราคา/หน่วย (฿) *</th>
+                                <th style="width: 140px; text-align: right;">ราคารวม (฿)</th>
+                                <th style="min-width: 150px;">หมายเหตุ</th>
+                                <th style="width: 70px; text-align: center;">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderItemsTbody">
+                            <!-- Injected rows via JS -->
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: var(--bg-subtle); font-weight: 700;">
+                                <td colspan="3" style="text-align: right; padding: 1rem 1.25rem; font-family: var(--font-heading); font-size: 0.95rem;">
+                                    ยอดรวมทั้งสิ้น (Grand Total):
+                                </td>
+                                <td id="totalQuantityFooter" style="text-align: center; font-family: var(--font-numeric); font-size: 1.05rem;">
+                                    0
+                                </td>
+                                <td></td>
+                                <td></td>
+                                <td id="totalAmountFooter" style="text-align: right; font-family: var(--font-numeric); font-size: 1.25rem; color: var(--primary);">
+                                    ฿0.00
+                                </td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div id="tableEmptyState" style="text-align: center; padding: 3rem 1.5rem; color: var(--text-muted);">
+                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📝</div>
+                    <div style="font-size: 1rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">ยังไม่มีรายการสั่งซื้อในตาราง</div>
+                    <p style="font-size: 0.84rem; margin-bottom: 1rem;">เลือกสินค้าจากแค็ตตาล็อกของบริษัทด้านบน หรือกดปุ่มด้านล่างเพื่อเพิ่มรายการ</p>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addCustomRow()">
+                        <span>➕</span> เพิ่มรายการสั่งซื้อ
+                    </button>
+                </div>
+            </div>
+            <div class="card-body" style="padding: 1.35rem; border-top: 1px solid var(--border); background: #fafafa;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">หมายเหตุการสั่งซื้อ (วัตถุประสงค์ / รายละเอียดโครงการ / แหล่งงบประมาณ)</label>
+                    <textarea name="note" class="form-control" rows="3" placeholder="ระบุเหตุผลในการจัดซื้อ หรือโครงการที่เกี่ยวข้อง เช่น จัดซื้อตามงบประมาณพัฒนาห้องแล็บอิเล็กทรอนิกส์..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Actions Footer -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem 0;">
+            <a href="{{ url_for('purchase_orders_list') }}" class="btn btn-secondary">
+                ยกเลิก
+            </a>
+            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                <button type="button" class="btn btn-secondary" onclick="addCustomRow()">
+                    <span>➕</span> เพิ่มรายการอีก
+                </button>
+                <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.75rem; font-size: 1rem; font-weight: 700;">
+                    <span>💾</span> บันทึกและสร้างใบสั่งซื้อ
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- =========================================================================
+     MODAL: สั่งจากรายการเดิม (Re-order from Previous Orders)
+     ========================================================================= -->
+<div class="modal-backdrop" id="reorderModal">
+    <div class="modal-box" style="max-width: 680px;">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <span>🔄</span> สั่งจากรายการเดิม (Re-order)
+            </h3>
+            <button type="button" class="modal-close" onclick="closeModal('reorderModal')">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 1.35rem; overflow-y: auto; max-height: 65vh;">
+            <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 1rem;">
+                เลือกใบสั่งซื้อเดิมที่เคยสั่งไปแล้ว เพื่อคัดลอกรายการสินค้าทั้งหมดเข้ามาในใบสั่งซื้อฉบับนี้โดยอัตโนมัติ:
+            </p>
+
+            {% if recent_pos %}
+                <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                    {% for p in recent_pos %}
+                        <div style="border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem; background: white; transition: var(--transition-fast); display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <div style="flex: 1; min-width: 220px;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                                    <strong style="font-family: var(--font-numeric); color: var(--accent-blue);">{{ p.po_number }}</strong>
+                                    <span class="badge {{ p.status_badge_class }}" style="font-size: 0.7rem;">{{ p.status_display }}</span>
+                                </div>
+                                <div style="font-weight: 600; color: var(--text-main); font-size: 0.9rem;">
+                                    🏢 {{ p.supplier.company_name }}
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                                    วันที่: {{ p.order_date.strftime('%d/%m/%Y') }} • <strong>{{ p.items|length }} รายการ</strong> ({{ p.items_count }} ชิ้น) • ยอดรวม: <strong>฿{{ "{:,.2f}".format(p.total_amount) }}</strong>
+                                </div>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="loadPreviousOrder({{ p.po_id }})">
+                                    <span>📥</span> นำเข้าทั้งใบนี้
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    ยังไม่มีประวัติการสั่งซื้อเดิมในระบบ
+                </div>
+            {% endif %}
+        </div>
+        <div class="modal-footer" style="padding: 1rem 1.35rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('reorderModal')">ปิด</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: เพิ่มบริษัทคู่ค้าใหม่ (Add Supplier Modal)
+     ========================================================================= -->
+<div class="modal-backdrop" id="addSupplierModal">
+    <div class="modal-box" style="max-width: 580px;">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <span>🏢</span> เพิ่มข้อมูลบริษัทคู่ค้า / ผู้จัดจำหน่ายใหม่
+            </h3>
+            <button type="button" class="modal-close" onclick="closeModal('addSupplierModal')">✕</button>
+        </div>
+        <form id="ajaxAddSupplierForm" onsubmit="handleAjaxAddSupplier(event)">
+            <div class="modal-body" style="padding: 1.35rem;">
+                <div class="form-group">
+                    <label class="form-label">ชื่อบริษัท / ร้านค้า *</label>
+                    <input type="text" name="company_name" id="newSupName" class="form-control" placeholder="เช่น บริษัท สยามเทคโนโลยี จำกัด" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ชื่อผู้ติดต่อ / ตัวแทนขาย</label>
+                        <input type="text" name="contact_name" id="newSupContact" class="form-control" placeholder="เช่น คุณสมบัติ ใจดี">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เบอร์โทรศัพท์ติดต่อ</label>
+                        <input type="text" name="phone" id="newSupPhone" class="form-control" placeholder="เช่น 02-123-4567, 089-xxx-xxxx">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">อีเมล</label>
+                        <input type="email" name="email" id="newSupEmail" class="form-control" placeholder="sales@company.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เลขประจำตัวผู้เสียภาษี</label>
+                        <input type="text" name="tax_id" id="newSupTaxId" class="form-control" placeholder="เลข 13 หลัก">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">ที่อยู่บริษัท</label>
+                    <textarea name="address" id="newSupAddress" class="form-control" rows="2" placeholder="เลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 1rem 1.35rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('addSupplierModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <span>💾</span> บันทึกบริษัท
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: ดูและแก้ไขข้อมูลบริษัท (Edit Supplier Modal)
+     ========================================================================= -->
+<div class="modal-backdrop" id="editSupplierModal">
+    <div class="modal-box" style="max-width: 580px;">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <span>✏️</span> ดูและแก้ไขข้อมูลบริษัทคู่ค้า
+            </h3>
+            <button type="button" class="modal-close" onclick="closeModal('editSupplierModal')">✕</button>
+        </div>
+        <form id="ajaxEditSupplierForm" onsubmit="handleAjaxEditSupplier(event)">
+            <input type="hidden" id="editSupId" name="supplier_id">
+            <div class="modal-body" style="padding: 1.35rem;">
+                <div class="form-group">
+                    <label class="form-label">ชื่อบริษัท / ร้านค้า *</label>
+                    <input type="text" name="company_name" id="editSupName" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ชื่อผู้ติดต่อ</label>
+                        <input type="text" name="contact_name" id="editSupContact" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เบอร์โทรศัพท์</label>
+                        <input type="text" name="phone" id="editSupPhone" class="form-control">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">อีเมล</label>
+                        <input type="email" name="email" id="editSupEmail" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เลขประจำตัวผู้เสียภาษี</label>
+                        <input type="text" name="tax_id" id="editSupTaxId" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">ที่อยู่บริษัท</label>
+                    <textarea name="address" id="editSupAddress" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 1rem 1.35rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('editSupplierModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <span>💾</span> บันทึกการแก้ไข
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =========================================================================
+     MODAL: เพิ่มสินค้าในแค็ตตาล็อกของบริษัท (Add Product to Supplier Catalog)
+     ========================================================================= -->
+<div class="modal-backdrop" id="addCompanyProductModal">
+    <div class="modal-box" style="max-width: 560px;">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <span>➕</span> เพิ่มสินค้าใหม่ในแค็ตตาล็อกของบริษัท
+            </h3>
+            <button type="button" class="modal-close" onclick="closeModal('addCompanyProductModal')">✕</button>
+        </div>
+        <form id="ajaxAddProductForm" onsubmit="handleAjaxAddCompanyProduct(event)">
+            <div class="modal-body" style="padding: 1.35rem;">
+                <div class="form-group">
+                    <label class="form-label">ชื่อสินค้า / พัสดุ *</label>
+                    <input type="text" name="product_name" id="modalProdName" class="form-control" placeholder="เช่น ดิจิทัลมัลติมิเตอร์ หรือ ตะกั่วบัดกรี" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">รหัสสินค้า / รุ่น</label>
+                        <input type="text" name="product_code" id="modalProdCode" class="form-control" placeholder="เช่น MT-001 หรือ รหัสสินค้า">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">หมวดหมู่</label>
+                        <input type="text" name="category_name" id="modalProdCategory" class="form-control" placeholder="เช่น วัสดุสิ้นเปลือง / ครุภัณฑ์">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ราคามาตรฐานต่อหน่วย (฿) *</label>
+                        <input type="number" step="0.01" min="0" name="unit_price" id="modalProdPrice" class="form-control" value="0.00" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">หน่วยนับ *</label>
+                        <input type="text" name="unit" id="modalProdUnit" class="form-control" value="ชิ้น" required>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">รายละเอียดเพิ่มเติม</label>
+                    <input type="text" name="description" id="modalProdDesc" class="form-control" placeholder="เช่น คุณสมบัติ สเปกเบื้องต้น">
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 1rem 1.35rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('addCompanyProductModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <span>💾</span> เพิ่มลงแค็ตตาล็อก
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// =========================================================================
+// STATE MANAGEMENT & LOGIC
+// =========================================================================
+let currentSupplierProducts = [];
+let currentSupplierData = null;
+let orderItems = [];
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const supplierSelect = document.getElementById('supplierSelect');
+    if (supplierSelect.value) {
+        onSupplierChange(supplierSelect.value);
+    }
+
+    // Check if re-order PO is passed from backend
+    {% if reorder_po %}
+        // Automatically prefill items from reorder_po
+        loadPreviousOrder({{ reorder_po.po_id }});
+    {% endif %}
+});
+
+// Modal Helpers
+function openModal(modalId) {
+    const el = document.getElementById(modalId);
+    if (el) el.classList.add('active');
+}
+function closeModal(modalId) {
+    const el = document.getElementById(modalId);
+    if (el) el.classList.remove('active');
+}
+
+// -------------------------------------------------------------------------
+// 1. SUPPLIER CHANGE & FETCH PRODUCTS (เมื่อเลือกบริษัท จะโชว์สินค้าที่ขาย)
+// -------------------------------------------------------------------------
+function onSupplierChange(supplierId) {
+    const infoBox = document.getElementById('supplierInfoBox');
+    const editBtn = document.getElementById('editSupplierBtn');
+    const addProdBtn = document.getElementById('addCompanyProductBtn');
+    const emptyHint = document.getElementById('supplierProductsEmptyHint');
+    const loading = document.getElementById('supplierProductsLoading');
+    const grid = document.getElementById('supplierProductsGrid');
+    const badge = document.getElementById('supplierProductBadge');
+    const filterRow = document.getElementById('supplierProductsFilterRow');
+
+    if (!supplierId) {
+        infoBox.style.display = 'none';
+        editBtn.style.display = 'none';
+        addProdBtn.style.display = 'none';
+        emptyHint.style.display = 'block';
+        filterRow.style.display = 'none';
+        badge.style.display = 'none';
+        grid.innerHTML = '';
+        currentSupplierProducts = [];
+        currentSupplierData = null;
+        return;
+    }
+
+    loading.style.display = 'block';
+    emptyHint.style.display = 'none';
+    grid.innerHTML = '';
+
+    fetch(`/api/suppliers/${supplierId}/products`)
+        .then(res => res.json())
+        .then(data => {
+            loading.style.display = 'none';
+            currentSupplierData = data.supplier;
+            currentSupplierProducts = data.products || [];
+
+            // Update Supplier Info Box
+            document.getElementById('supContactText').textContent = data.supplier.contact_name || '-';
+            document.getElementById('supPhoneText').textContent = data.supplier.phone || '-';
+            document.getElementById('supEmailText').textContent = data.supplier.email || '-';
+            document.getElementById('supTaxIdText').textContent = data.supplier.tax_id || '-';
+            document.getElementById('supAddressText').textContent = data.supplier.address || '-';
+            infoBox.style.display = 'block';
+            editBtn.style.display = 'inline-flex';
+            addProdBtn.style.display = 'inline-flex';
+
+            // Render Products
+            badge.textContent = `${currentSupplierProducts.length} รายการ`;
+            badge.style.display = 'inline-block';
+            filterRow.style.display = currentSupplierProducts.length > 0 ? 'block' : 'none';
+
+            renderSupplierProducts(currentSupplierProducts);
+        })
+        .catch(err => {
+            loading.style.display = 'none';
+            console.error('Error fetching supplier products:', err);
+        });
+}
+
+function renderSupplierProducts(products) {
+    const grid = document.getElementById('supplierProductsGrid');
+    grid.innerHTML = '';
+
+    if (!products || products.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; background: var(--bg-subtle); border-radius: var(--radius-sm); color: var(--text-muted);">
+                <div style="font-size: 1.8rem; margin-bottom: 0.35rem;">📦</div>
+                <div>ยังไม่มีรายการสินค้าในแค็ตตาล็อกของบริษัทนี้</div>
+                <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 0.65rem;" onclick="openAddCompanyProductModal()">
+                    + เพิ่มสินค้าของบริษัทนี้
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    products.forEach(p => {
+        const card = document.createElement('div');
+        card.style.background = 'white';
+        card.style.border = '1px solid var(--border)';
+        card.style.borderRadius = 'var(--radius-md)';
+        card.style.padding = '0.95rem 1.15rem';
+        card.style.display = 'flex';
+        card.style.flexDirection = 'column';
+        card.style.justifyContent = 'space-between';
+        card.style.boxShadow = 'var(--shadow-xs)';
+        card.style.transition = 'var(--transition-fast)';
+
+        card.innerHTML = `
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.35rem;">
+                    <span class="badge badge-secondary" style="font-size: 0.72rem; font-family: var(--font-numeric);">
+                        ${p.product_code || 'ทั่วไป'}
+                    </span>
+                    ${p.category_name ? `<span style="font-size: 0.74rem; color: var(--text-muted);">${p.category_name}</span>` : ''}
+                </div>
+                <div style="font-weight: 600; color: var(--text-main); font-size: 0.92rem; margin-bottom: 0.35rem; line-height: 1.4;">
+                    ${p.product_name}
+                </div>
+                ${p.description ? `<div style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.5rem; line-height: 1.4;">${p.description}</div>` : ''}
+            </div>
+            <div style="margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px dashed var(--border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted);">ราคามาตรฐาน</div>
+                    <div style="font-family: var(--font-numeric); font-weight: 700; color: var(--primary); font-size: 1.05rem;">
+                        ฿${parseFloat(p.unit_price).toLocaleString('en-US', {minimumFractionDigits: 2})}
+                        <span style="font-size: 0.78rem; font-weight: normal; color: var(--text-muted);">/${p.unit || 'ชิ้น'}</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;" onclick="addItemFromSupplierProduct(${p.product_id})">
+                    <span>➕</span> เพิ่ม
+                </button>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function filterSupplierProducts(searchTerm) {
+    if (!searchTerm) {
+        renderSupplierProducts(currentSupplierProducts);
+        return;
+    }
+    const term = searchTerm.toLowerCase();
+    const filtered = currentSupplierProducts.filter(p => 
+        (p.product_name && p.product_name.toLowerCase().includes(term)) ||
+        (p.product_code && p.product_code.toLowerCase().includes(term)) ||
+        (p.category_name && p.category_name.toLowerCase().includes(term))
+    );
+    renderSupplierProducts(filtered);
+}
+
+// -------------------------------------------------------------------------
+// 2. ADD ITEM TO TABLE
+// -------------------------------------------------------------------------
+function addItemFromSupplierProduct(productId) {
+    const prod = currentSupplierProducts.find(p => p.product_id === productId);
+    if (!prod) return;
+
+    addRow({
+        item_name: prod.product_name,
+        item_code: prod.product_code || '',
+        quantity: 1,
+        unit: prod.unit || 'ชิ้น',
+        unit_price: prod.unit_price || 0.0,
+        equipment_id: prod.equipment_id || '',
+        notes: ''
+    });
+}
+
+function addCustomRow() {
+    addRow({
+        item_name: '',
+        item_code: '',
+        quantity: 1,
+        unit: 'ชิ้น',
+        unit_price: 0.0,
+        equipment_id: '',
+        notes: ''
+    });
+}
+
+function addRow(data) {
+    const tbody = document.getElementById('orderItemsTbody');
+    const emptyState = document.getElementById('tableEmptyState');
+    emptyState.style.display = 'none';
+
+    const rowId = 'item_row_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const tr = document.createElement('tr');
+    tr.id = rowId;
+    tr.className = 'order-item-row';
+
+    tr.innerHTML = `
+        <td class="row-index" style="text-align: center; font-weight: 600; color: var(--text-muted);">
+            ${tbody.children.length + 1}
+        </td>
+        <td>
+            <input type="text" name="item_name[]" class="form-control item-name-input" value="${escapeHtml(data.item_name)}" placeholder="ระบุชื่อวัสดุ หรือ ครุภัณฑ์..." required>
+            <input type="hidden" name="equipment_id[]" value="${data.equipment_id || ''}">
+        </td>
+        <td>
+            <input type="text" name="item_code[]" class="form-control" value="${escapeHtml(data.item_code)}" placeholder="รหัส / รุ่น">
+        </td>
+        <td>
+            <input type="number" name="quantity[]" min="1" step="1" class="form-control item-qty-input" value="${data.quantity || 1}" required style="text-align: center; font-family: var(--font-numeric); font-weight: 600;" oninput="updateRowTotal('${rowId}')">
+        </td>
+        <td>
+            <input type="text" name="unit[]" class="form-control" value="${escapeHtml(data.unit || 'ชิ้น')}" placeholder="ชิ้น">
+        </td>
+        <td>
+            <input type="number" name="unit_price[]" min="0" step="0.01" class="form-control item-price-input" value="${parseFloat(data.unit_price || 0).toFixed(2)}" required style="text-align: right; font-family: var(--font-numeric); font-weight: 600;" oninput="updateRowTotal('${rowId}')">
+        </td>
+        <td style="text-align: right; font-family: var(--font-numeric); font-weight: 700; color: var(--primary);">
+            <span class="row-total-display">฿0.00</span>
+        </td>
+        <td>
+            <input type="text" name="notes[]" class="form-control" value="${escapeHtml(data.notes || '')}" placeholder="หมายเหตุ / สเปก">
+        </td>
+        <td style="text-align: center;">
+            <button type="button" class="btn btn-secondary btn-sm" style="color: var(--danger); padding: 0.25rem 0.5rem;" title="ลบรายการนี้" onclick="removeRow('${rowId}')">
+                ✕
+            </button>
+        </td>
+    `;
+
+    tbody.appendChild(tr);
+    updateRowTotal(rowId);
+    reindexRows();
+}
+
+function removeRow(rowId) {
+    const tr = document.getElementById(rowId);
+    if (tr) {
+        tr.remove();
+        reindexRows();
+        calculateGrandTotal();
+    }
+    const tbody = document.getElementById('orderItemsTbody');
+    if (tbody.children.length === 0) {
+        document.getElementById('tableEmptyState').style.display = 'block';
+    }
+}
+
+function reindexRows() {
+    const tbody = document.getElementById('orderItemsTbody');
+    const rows = tbody.querySelectorAll('.order-item-row');
+    rows.forEach((r, idx) => {
+        const cell = r.querySelector('.row-index');
+        if (cell) cell.textContent = idx + 1;
+    });
+    document.getElementById('orderItemsCountBadge').textContent = `${rows.length} รายการ`;
+}
+
+function updateRowTotal(rowId) {
+    const tr = document.getElementById(rowId);
+    if (!tr) return;
+
+    const qtyInput = tr.querySelector('.item-qty-input');
+    const priceInput = tr.querySelector('.item-price-input');
+    const totalDisplay = tr.querySelector('.row-total-display');
+
+    const qty = parseFloat(qtyInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    const total = qty * price;
+
+    totalDisplay.textContent = '฿' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    calculateGrandTotal();
+}
+
+function calculateGrandTotal() {
+    const tbody = document.getElementById('orderItemsTbody');
+    const rows = tbody.querySelectorAll('.order-item-row');
+
+    let grandTotal = 0;
+    let totalQty = 0;
+
+    rows.forEach(r => {
+        const qty = parseFloat(r.querySelector('.item-qty-input').value) || 0;
+        const price = parseFloat(r.querySelector('.item-price-input').value) || 0;
+        grandTotal += (qty * price);
+        totalQty += qty;
+    });
+
+    document.getElementById('totalQuantityFooter').textContent = totalQty;
+    document.getElementById('totalAmountFooter').textContent = '฿' + grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+// -------------------------------------------------------------------------
+// 3. INVENTORY LIVE SEARCH (ค้นหาจาก ชื่อวัสดุและครุภัณฑ์ได้)
+// -------------------------------------------------------------------------
+let searchTimeout = null;
+
+function onInventorySearchInput(keyword) {
+    clearTimeout(searchTimeout);
+    const resultsContainer = document.getElementById('inventorySearchResults');
+
+    if (!keyword || keyword.trim().length === 0) {
+        resultsContainer.style.display = 'none';
+        return;
+    }
+
+    searchTimeout = setTimeout(() => {
+        fetch(`/api/equipment/search?q=${encodeURIComponent(keyword.trim())}`)
+            .then(res => res.json())
+            .then(items => {
+                renderInventorySearchResults(items);
+            })
+            .catch(err => console.error('Error searching inventory:', err));
+    }, 200);
+}
+
+function renderInventorySearchResults(items) {
+    const container = document.getElementById('inventorySearchResults');
+    container.innerHTML = '';
+
+    if (!items || items.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                ไม่พบวัสดุหรือครุภัณฑ์ที่ตรงกับคำค้นหา
+            </div>
+        `;
+        container.style.display = 'block';
+        return;
+    }
+
+    items.forEach(eq => {
+        const div = document.createElement('div');
+        div.style.padding = '0.75rem 1rem';
+        div.style.borderBottom = '1px solid var(--border)';
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        div.style.gap = '0.5rem';
+        div.style.cursor = 'pointer';
+        div.style.transition = 'var(--transition-fast)';
+
+        div.onmouseover = () => { div.style.background = 'var(--bg-subtle)'; };
+        div.onmouseout = () => { div.style.background = 'white'; };
+
+        div.innerHTML = `
+            <div>
+                <div style="display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.15rem;">
+                    <span class="badge badge-secondary" style="font-family: var(--font-numeric); font-size: 0.72rem;">
+                        ${eq.equipment_code}
+                    </span>
+                    <strong style="color: var(--text-main); font-size: 0.88rem;">${eq.name}</strong>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                    หมวด: ${eq.category_name} • คงเหลือในคลัง: <strong style="color: var(--primary);">${eq.available_quantity} / ${eq.total_quantity} ชิ้น</strong>
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">
+                <span>➕</span> เลือก
+            </button>
+        `;
+
+        div.onclick = () => {
+            addRow({
+                item_name: eq.name,
+                item_code: eq.equipment_code,
+                quantity: 1,
+                unit: 'ชิ้น',
+                unit_price: 0.0,
+                equipment_id: eq.equipment_id,
+                notes: `หมวดหมู่: ${eq.category_name}`
+            });
+            clearInventorySearch();
+        };
+
+        container.appendChild(div);
+    });
+
+    container.style.display = 'block';
+}
+
+function clearInventorySearch() {
+    document.getElementById('inventorySearchInput').value = '';
+    document.getElementById('inventorySearchResults').style.display = 'none';
+}
+
+// Close search dropdown on click outside
+document.addEventListener('click', function(e) {
+    const searchWrapper = document.getElementById('inventorySearchInput');
+    const resultsContainer = document.getElementById('inventorySearchResults');
+    if (resultsContainer && searchWrapper && !searchWrapper.contains(e.target) && !resultsContainer.contains(e.target)) {
+        resultsContainer.style.display = 'none';
+    }
+});
+
+// -------------------------------------------------------------------------
+// 4. LOAD PREVIOUS ORDER (สั่งจากรายการเดิม)
+// -------------------------------------------------------------------------
+function loadPreviousOrder(poId) {
+    fetch(`/api/purchases/${poId}/items`)
+        .then(res => res.json())
+        .then(data => {
+            closeModal('reorderModal');
+
+            // 1. Select the supplier from this past order if supplier not yet chosen
+            const supSelect = document.getElementById('supplierSelect');
+            if (data.supplier_id) {
+                supSelect.value = data.supplier_id;
+                onSupplierChange(data.supplier_id);
+            }
+
+            // 2. Clear empty state and populate items
+            const tbody = document.getElementById('orderItemsTbody');
+            tbody.innerHTML = '';
+
+            data.items.forEach(item => {
+                addRow({
+                    item_name: item.item_name,
+                    item_code: item.item_code,
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    unit_price: item.unit_price,
+                    equipment_id: item.equipment_id,
+                    notes: item.notes || `คัดลอกจาก ${data.po_number}`
+                });
+            });
+
+            // Note notification
+            alert(`นำเข้ารายการจาก ${data.po_number} (${data.supplier_name}) เรียบร้อยแล้ว จำนวน ${data.items.length} รายการ`);
+        })
+        .catch(err => {
+            console.error('Error loading previous order:', err);
+            alert('ไม่สามารถโหลดข้อมูลคำสั่งซื้อเดิมได้ กรุณาลองใหม่อีกครั้ง');
+        });
+}
+
+// -------------------------------------------------------------------------
+// 5. MODAL FORM HANDLERS (AJAX Add Supplier & Edit Supplier)
+// -------------------------------------------------------------------------
+function handleAjaxAddSupplier(e) {
+    e.preventDefault();
+    const form = document.getElementById('ajaxAddSupplierForm');
+    const formData = new FormData(form);
+
+    fetch('/admin/suppliers/add', {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.supplier) {
+            closeModal('addSupplierModal');
+            form.reset();
+
+            // Add new supplier option to select
+            const supSelect = document.getElementById('supplierSelect');
+            const opt = document.createElement('option');
+            opt.value = data.supplier.supplier_id;
+            opt.textContent = `${data.supplier.company_name} ${data.supplier.phone ? '(โทร: ' + data.supplier.phone + ')' : ''}`;
+            supSelect.appendChild(opt);
+
+            // Select this supplier
+            supSelect.value = data.supplier.supplier_id;
+            onSupplierChange(data.supplier.supplier_id);
+
+            alert('เพิ่มบริษัทคู่ค้าเรียบร้อยแล้ว');
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+function openEditSupplierModal() {
+    if (!currentSupplierData) return;
+    document.getElementById('editSupId').value = currentSupplierData.supplier_id;
+    document.getElementById('editSupName').value = currentSupplierData.company_name || '';
+    document.getElementById('editSupContact').value = currentSupplierData.contact_name || '';
+    document.getElementById('editSupPhone').value = currentSupplierData.phone || '';
+    document.getElementById('editSupEmail').value = currentSupplierData.email || '';
+    document.getElementById('editSupTaxId').value = currentSupplierData.tax_id || '';
+    document.getElementById('editSupAddress').value = currentSupplierData.address || '';
+    openModal('editSupplierModal');
+}
+
+function handleAjaxEditSupplier(e) {
+    e.preventDefault();
+    const form = document.getElementById('ajaxEditSupplierForm');
+    const supId = document.getElementById('editSupId').value;
+    const formData = new FormData(form);
+
+    fetch(`/admin/suppliers/${supId}/edit`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.supplier) {
+            closeModal('editSupplierModal');
+            // Refresh supplier details on screen
+            onSupplierChange(supId);
+            alert('แก้ไขข้อมูลบริษัทเรียบร้อยแล้ว');
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+function openAddCompanyProductModal() {
+    if (!currentSupplierData) {
+        alert('กรุณาเลือกบริษัทคู่ค้าก่อน');
+        return;
+    }
+    openModal('addCompanyProductModal');
+}
+
+function handleAjaxAddCompanyProduct(e) {
+    e.preventDefault();
+    if (!currentSupplierData) return;
+
+    const form = document.getElementById('ajaxAddProductForm');
+    const formData = new FormData(form);
+
+    fetch(`/admin/suppliers/${currentSupplierData.supplier_id}/products/add`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success && data.product) {
+            closeModal('addCompanyProductModal');
+            form.reset();
+            // Refresh supplier catalog
+            onSupplierChange(currentSupplierData.supplier_id);
+            alert('เพิ่มสินค้าในแค็ตตาล็อกของบริษัทเรียบร้อยแล้ว');
+        } else {
+            alert(data.message || 'เกิดข้อผิดพลาดในการเพิ่มสินค้า');
+        }
+    })
+    .catch(err => console.error(err));
+}
+</script>
+{% endblock %}

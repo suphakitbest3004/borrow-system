@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}จัดการข้อมูลผู้ใช้งาน (Admin){% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>👥</span> จัดการข้อมูลผู้ใช้งาน (User Management)
+        </h1>
+        <p class="page-subtitle">เพิ่ม ลบ แก้ไข ข้อมูลผู้ใช้งาน และกำหนดสิทธิ์การเข้าถึงระบบ (CRUD)</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addUserModal')">
+            <span>➕</span> เพิ่มผู้ใช้งานใหม่
+        </button>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding: 1rem 1.25rem;">
+        <form method="GET" action="{{ url_for('admin_users') }}" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <div style="flex: 2; min-width: 240px;">
+                <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="ค้นหาชื่อ อีเมล หรือรหัสประจำตัว...">
+            </div>
+            <div style="flex: 1; min-width: 180px;">
+                <select name="role" class="form-control" onchange="this.form.submit()">
+                    <option value="">ทุกระดับสิทธิ์</option>
+                    <option value="student" {% if selected_role == 'student' %}selected{% endif %}>นักเรียน/นักศึกษา</option>
+                    <option value="teacher" {% if selected_role == 'teacher' %}selected{% endif %}>อาจารย์/ครูผู้สอน</option>
+                    <option value="staff" {% if selected_role == 'staff' %}selected{% endif %}>เจ้าหน้าที่พัสดุ</option>
+                    <option value="admin" {% if selected_role == 'admin' %}selected{% endif %}>ผู้ดูแลระบบ (Admin)</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">ค้นหา</button>
+            {% if search_query or selected_role %}
+                <a href="{{ url_for('admin_users') }}" class="btn btn-secondary btn-sm">ล้าง</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        {% if users_list %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>รหัสประจำตัว</th>
+                            <th>ชื่อ - นามสกุล</th>
+                            <th>อีเมล</th>
+                            <th>ระดับสิทธิ์</th>
+                            <th>แผนก/สังกัด</th>
+                            <th>เบอร์โทร</th>
+                            <th>LINE ID</th>
+                            <th style="text-align: right;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users_list %}
+                            <tr>
+                                <td style="font-family: monospace; font-weight: 600;">{{ u.student_or_citizen_id }}</td>
+                                <td>
+                                    <div style="font-weight: 600;">{{ u.full_name }}</div>
+                                </td>
+                                <td>{{ u.email }}</td>
+                                <td>
+                                    <span class="badge {{ u.role_badge_class }}">{{ u.role_display }}</span>
+                                </td>
+                                <td>{{ u.department or '-' }}</td>
+                                <td>{{ u.phone_number or '-' }}</td>
+                                <td>
+                                    {% if u.line_user_id %}
+                                        <span style="font-family: monospace; font-size: 0.75rem; color: var(--success);">{{ u.line_user_id }}</span>
+                                    {% else %}
+                                        <span style="color: var(--text-subtle); font-size: 0.75rem;">-</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                    <button type="button" class="btn btn-secondary btn-sm" onclick="openEditUserModal('{{ u.user_id }}', '{{ u.student_or_citizen_id }}', '{{ u.first_name }}', '{{ u.last_name }}', '{{ u.phone_number or '' }}', '{{ u.role }}', '{{ u.department or '' }}', '{{ u.line_user_id or '' }}')">
+                                        ✏️ แก้ไข
+                                    </button>
+
+                                    {% if u.user_id != current_user.user_id %}
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="openDeleteUserModal('{{ u.user_id }}', '{{ u.full_name|replace("'", "\\'") }}')">
+                                            🗑️ ลบ
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                ไม่พบข้อมูลผู้ใช้งาน
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal-backdrop" id="addUserModal">
+    <div class="modal-box" style="max-width: 560px;">
+        <div class="modal-header">
+            <h2 class="modal-title">➕ เพิ่มผู้ใช้งานใหม่</h2>
+            <button type="button" class="modal-close" onclick="closeModal('addUserModal')">✕</button>
+        </div>
+        <form action="{{ url_for('add_user') }}" method="POST">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ชื่อจริง <span style="color: var(--danger);">*</span></label>
+                        <input type="text" name="first_name" class="form-control" placeholder="ชื่อ" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">นามสกุล <span style="color: var(--danger);">*</span></label>
+                        <input type="text" name="last_name" class="form-control" placeholder="นามสกุล" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">รหัสประจำตัว / เลขบัตร <span style="color: var(--danger);">*</span></label>
+                        <input type="text" name="student_or_citizen_id" class="form-control" placeholder="เช่น 6630128001" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">สิทธิ์การใช้งาน (Role) <span style="color: var(--danger);">*</span></label>
+                        <select name="role" class="form-control" required>
+                            <option value="student">นักเรียน/นักศึกษา</option>
+                            <option value="teacher">อาจารย์/ครูผู้สอน</option>
+                            <option value="staff">เจ้าหน้าที่พัสดุ</option>
+                            <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">อีเมล <span style="color: var(--danger);">*</span></label>
+                    <input type="email" name="email" class="form-control" placeholder="email@nonghan.ac.th" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">แผนกวิชา / สังกัด</label>
+                        <input type="text" name="department" class="form-control" placeholder="เช่น แผนกช่างไฟฟ้า">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เบอร์โทรศัพท์</label>
+                        <input type="tel" name="phone_number" class="form-control" placeholder="08x-xxx-xxxx">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">LINE User ID</label>
+                        <input type="text" name="line_user_id" class="form-control" placeholder="Uxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">รหัสผ่านเริ่มต้น</label>
+                        <input type="password" name="password" class="form-control" value="123456" required>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addUserModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">บันทึกผู้ใช้</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-backdrop" id="editUserModal">
+    <div class="modal-box" style="max-width: 560px;">
+        <div class="modal-header">
+            <h2 class="modal-title">✏️ แก้ไขข้อมูลผู้ใช้งาน</h2>
+            <button type="button" class="modal-close" onclick="closeModal('editUserModal')">✕</button>
+        </div>
+        <form id="editUserForm" method="POST">
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">ชื่อจริง</label>
+                        <input type="text" name="first_name" id="editUserFirstName" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">นามสกุล</label>
+                        <input type="text" name="last_name" id="editUserLastName" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">รหัสประจำตัว / เลขบัตร</label>
+                        <input type="text" name="student_or_citizen_id" id="editUserIdCode" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">สิทธิ์การใช้งาน (Role)</label>
+                        <select name="role" id="editUserRole" class="form-control" required>
+                            <option value="student">นักเรียน/นักศึกษา</option>
+                            <option value="teacher">อาจารย์/ครูผู้สอน</option>
+                            <option value="staff">เจ้าหน้าที่พัสดุ</option>
+                            <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">แผนกวิชา / สังกัด</label>
+                        <input type="text" name="department" id="editUserDept" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">เบอร์โทรศัพท์</label>
+                        <input type="tel" name="phone_number" id="editUserPhone" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">LINE User ID</label>
+                        <input type="text" name="line_user_id" id="editUserLine" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">รีเซ็ตรหัสผ่านใหม่ (เว้นว่างได้)</label>
+                        <input type="password" name="new_password" class="form-control" placeholder="กำหนดรหัสผ่านใหม่...">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editUserModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete User Modal -->
+<div class="modal-backdrop" id="deleteUserModal">
+    <div class="modal-box" style="max-width: 480px;">
+        <div class="modal-header">
+            <h2 class="modal-title" style="color: var(--danger);">🗑️ ยืนยันการลบผู้ใช้งาน</h2>
+            <button type="button" class="modal-close" onclick="closeModal('deleteUserModal')">✕</button>
+        </div>
+        <form id="deleteUserForm" method="POST" action="">
+            <div class="modal-body" style="padding: 1.35rem;">
+                <p style="font-size: 0.95rem; margin-bottom: 0.75rem;">
+                    ท่านต้องการลบผู้ใช้งาน <strong id="deleteUserNameText" style="color: var(--text-main);">-</strong> ใช่หรือไม่?
+                </p>
+
+                <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: var(--radius-sm); padding: 0.85rem 1rem; font-size: 0.82rem; color: #9f1239; line-height: 1.5; margin-bottom: 1rem;">
+                    <strong>⚠️ มาตรฐานความปลอดภัยฐานข้อมูล (MySQL Data Integrity):</strong><br>
+                    หากผู้ใช้งานท่านนี้มีประวัติการยืม-คืน, คำขอ, หรือเอกสารในระบบ ฐานข้อมูลจะไม่ยอมให้ลบเพื่อป้องกันเอกสารสูญหาย
+                </div>
+
+                <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.85rem 1rem;">
+                    <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; font-size: 0.84rem; color: var(--text-main); margin-bottom: 0;">
+                        <input type="checkbox" name="force" value="1" style="margin-top: 0.2rem;">
+                        <span>
+                            <strong>ยืนยันล้างประวัติธุรกรรมที่ผูกอยู่ทั้งหมด</strong><br>
+                            <span style="font-size: 0.76rem; color: var(--text-muted);">(ใช้กรณีต้องการลบผู้ใช้นี้ออกจากระบบและล้างประวัติคำขอยืมทั้งหมดของผู้ใช้นี้ออกด้วย)</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer" style="padding: 1rem 1.35rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('deleteUserModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-danger btn-sm">
+                    🗑️ ยืนยันการลบ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openEditUserModal(id, idCode, firstName, lastName, phone, role, dept, lineId) {
+    document.getElementById('editUserForm').action = `/admin/users/${id}/edit`;
+    document.getElementById('editUserIdCode').value = idCode;
+    document.getElementById('editUserFirstName').value = firstName;
+    document.getElementById('editUserLastName').value = lastName;
+    document.getElementById('editUserPhone').value = phone;
+    document.getElementById('editUserRole').value = role;
+    document.getElementById('editUserDept').value = dept;
+    document.getElementById('editUserLine').value = lineId;
+    openModal('editUserModal');
+}
+
+function openDeleteUserModal(id, name) {
+    document.getElementById('deleteUserForm').action = `/admin/users/${id}/delete`;
+    document.getElementById('deleteUserNameText').textContent = name;
+    openModal('deleteUserModal');
+}
+</script>
+{% endblock %}

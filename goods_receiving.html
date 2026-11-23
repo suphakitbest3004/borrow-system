@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}รับเข้าวัสดุและครุภัณฑ์{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>📦</span> รับเข้าวัสดุและครุภัณฑ์
+        </h1>
+        <p class="page-subtitle">บันทึกการรับเข้าวัสดุ/ครุภัณฑ์ใหม่ อัปเดตจำนวนในคลังอัตโนมัติ พร้อมตรวจสอบประวัติย้อนหลัง</p>
+    </div>
+    <div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+        <a href="{{ url_for('goods_receiving_new') }}" class="btn btn-primary btn-sm">
+            <span>➕</span> รับเข้าวัสดุ/ครุภัณฑ์ใหม่
+        </a>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="stat-grid" style="margin-bottom: 1.5rem;">
+    <div class="stat-card">
+        <div>
+            <div class="stat-value">{{ total_receipts }}</div>
+            <div class="stat-label">ใบรับเข้าทั้งหมด</div>
+        </div>
+        <div class="stat-icon" style="color: var(--primary);">📋</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: var(--success);">{{ total_items_received }}</div>
+            <div class="stat-label">จำนวนที่รับเข้ารวม (ชิ้น)</div>
+        </div>
+        <div class="stat-icon" style="color: var(--success);">📥</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: var(--accent-blue);">{{ month_receipts }}</div>
+            <div class="stat-label">รับเข้าเดือนนี้</div>
+        </div>
+        <div class="stat-icon" style="color: var(--accent-blue);">📅</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: var(--warning);">{{ pending_pos|length }}</div>
+            <div class="stat-label">PO รอตรวจรับเข้าคลัง</div>
+        </div>
+        <div class="stat-icon" style="color: var(--warning);">⏳</div>
+    </div>
+</div>
+
+<!-- Pending POs Section -->
+{% if pending_pos %}
+<div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--warning);">
+    <div class="card-body" style="padding: 1rem 1.25rem;">
+        <h3 style="margin: 0 0 0.75rem 0; font-size: 1rem; color: var(--warning);">⏳ ใบสั่งซื้อ (PO) ที่รอตรวจรับเข้าคลัง</h3>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            {% for po in pending_pos %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; flex-wrap: wrap; gap: 0.75rem; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <span style="font-size: 1.25rem;">📦</span>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <strong style="color: var(--primary); font-size: 0.95rem;">{{ po.po_number }}</strong>
+                            <span class="badge badge-warning" style="font-size: 0.72rem; padding: 0.15rem 0.5rem;">รอตรวจรับ</span>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.2rem;">
+                            <span>🏢 {{ po.supplier.company_name }}</span> • 
+                            <span>📋 {{ po.items|length }} รายการ</span> • 
+                            <span style="font-weight: 600; color: var(--text-main);">฿{{ "{:,.2f}".format(po.total_amount) }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="openPoQuickView('{{ po.po_id }}')" style="font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.35rem;">
+                        <span>📄</span> ดูรายละเอียดใบสั่งซื้อ
+                    </button>
+                    <form method="POST" action="{{ url_for('goods_receiving_from_po', po_id=po.po_id) }}" onsubmit="return confirm('ยืนยันตรวจรับเข้าคลังจาก PO {{ po.po_number }}?\n\nระบบจะอัปเดตจำนวนคงเหลือในคลังอัตโนมัติ');" style="margin: 0;">
+                        <button type="submit" class="btn btn-primary btn-sm" style="font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+                            <span>✅</span> ตรวจรับเข้าคลัง
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Search & Filter -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding: 1rem 1.25rem;">
+        <form method="GET" action="{{ url_for('goods_receiving') }}" style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 2; min-width: 200px;">
+                <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="ค้นหาเลขที่ใบรับ, แหล่งที่มา, เอกสารอ้างอิง...">
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <select name="type" class="form-control" onchange="this.form.submit()">
+                    <option value="all" {% if type_filter == 'all' %}selected{% endif %}>ทุกประเภท</option>
+                    <option value="purchase" {% if type_filter == 'purchase' %}selected{% endif %}>📦 จากใบสั่งซื้อ (PO)</option>
+                    <option value="direct" {% if type_filter == 'direct' %}selected{% endif %}>📥 รับเข้าตรง</option>
+                    <option value="donation" {% if type_filter == 'donation' %}selected{% endif %}>🎁 รับบริจาค</option>
+                    <option value="transfer" {% if type_filter == 'transfer' %}selected{% endif %}>🔄 โอนย้าย</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">
+                <span>🔍</span> ค้นหา
+            </button>
+            {% if search_query or type_filter != 'all' %}
+                <a href="{{ url_for('goods_receiving') }}" class="btn btn-secondary btn-sm">ล้างตัวกรอง</a>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<!-- Receipts History Table -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        {% if receipts %}
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>เลขที่ใบรับ</th>
+                        <th>ประเภท</th>
+                        <th>แหล่งที่มา/ผู้จัดจำหน่าย</th>
+                        <th style="text-align: center;">จำนวนรายการ</th>
+                        <th style="text-align: center;">จำนวนรวม (ชิ้น)</th>
+                        <th>วันที่รับเข้า</th>
+                        <th>ผู้รับเข้า</th>
+                        <th style="text-align: center;">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in receipts %}
+                    <tr>
+                        <td style="color: var(--text-secondary);">{{ loop.index }}</td>
+                        <td>
+                            <a href="{{ url_for('goods_receiving_detail', receipt_id=r.receipt_id) }}" style="font-weight: 600; color: var(--primary);">
+                                {{ r.receipt_number }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge {{ r.receipt_type_badge }}" style="font-size: 0.75rem;">{{ r.receipt_type_short }}</span>
+                        </td>
+                        <td>
+                            {% if r.supplier_name %}
+                                {{ r.supplier_name }}
+                            {% elif r.purchase_order %}
+                                {{ r.purchase_order.supplier.company_name }}
+                            {% else %}
+                                <span style="color: var(--text-tertiary);">-</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center; font-weight: 600;">{{ r.total_items }}</td>
+                        <td style="text-align: center; font-weight: 600; color: var(--success);">{{ r.total_quantity }}</td>
+                        <td style="font-size: 0.85rem;">
+                            {{ r.received_date.strftime('%d/%m/%Y %H:%M') if r.received_date else '-' }}
+                        </td>
+                        <td style="font-size: 0.85rem;">{{ r.receiver.full_name if r.receiver else '-' }}</td>
+                        <td style="text-align: center;">
+                            <a href="{{ url_for('goods_receiving_detail', receipt_id=r.receipt_id) }}" class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.65rem;">
+                                📄 ดูรายละเอียด
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="padding: 3rem 2rem; text-align: center; color: var(--text-tertiary);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+            <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">ยังไม่มีประวัติการรับเข้าวัสดุ/ครุภัณฑ์</p>
+            <p style="font-size: 0.9rem;">กดปุ่ม "รับเข้าวัสดุ/ครุภัณฑ์ใหม่" เพื่อเริ่มบันทึกการรับเข้า</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- PO Detail Quick View Modal -->
+<div class="modal-backdrop" id="poDetailModal">
+    <div class="modal-box" style="max-width: 720px;">
+        <div class="modal-header">
+            <div style="display: flex; align-items: center; gap: 0.65rem;">
+                <span style="font-size: 1.35rem;">🛒</span>
+                <div>
+                    <h2 class="modal-title" id="poModalTitle" style="margin: 0; font-size: 1.15rem;">รายละเอียดใบสั่งซื้อ</h2>
+                    <div id="poModalSubtitle" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;"></div>
+                </div>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('poDetailModal')">✕</button>
+        </div>
+        <div class="modal-body" style="padding: 1.25rem 1.5rem;">
+            <!-- Supplier & Info Box -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; font-size: 0.85rem; border: 1px solid var(--border);">
+                <div>
+                    <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem;">🏢 ผู้จัดจำหน่าย</div>
+                    <strong id="poModalSupplierName" style="font-size: 0.95rem; color: var(--text-main);">-</strong>
+                    <div id="poModalSupplierContact" style="color: var(--text-secondary); margin-top: 0.25rem;">-</div>
+                </div>
+                <div>
+                    <div style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.2rem;">📅 วันที่สั่งซื้อ / กำหนดส่งมอบ</div>
+                    <div id="poModalDates" style="color: var(--text-main); font-weight: 600;">-</div>
+                    <div id="poModalCreator" style="color: var(--text-secondary); margin-top: 0.25rem;">-</div>
+                </div>
+            </div>
+
+            <!-- Items Table -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                <h4 style="margin: 0; font-size: 0.92rem; color: var(--text-main);">
+                    📦 รายการสินค้าที่ต้องตรวจรับ (<span id="poModalItemCount">0</span> รายการ)
+                </h4>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">ตรวจสอบความถูกต้องก่อนรับเข้าคลัง</span>
+            </div>
+            <div class="table-responsive" style="border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 1rem;">
+                <table class="table" style="margin: 0; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="background: var(--bg-subtle);">
+                            <th style="width: 45px; text-align: center;">#</th>
+                            <th>รายการพัสดุ / ครุภัณฑ์</th>
+                            <th style="text-align: center; width: 95px;">จำนวนสั่ง</th>
+                            <th style="text-align: right; width: 110px;">ราคา/หน่วย</th>
+                            <th style="text-align: right; width: 120px;">ราคารวม</th>
+                        </tr>
+                    </thead>
+                    <tbody id="poModalItemsTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: var(--bg-subtle); font-weight: 700;">
+                            <td colspan="4" style="text-align: right;">ยอดรวมสุทธิทั้งสิ้น:</td>
+                            <td style="text-align: right; color: var(--primary); font-size: 1rem;" id="poModalTotalAmount">฿0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div id="poModalNotesContainer" style="display: none; background: #fffbeb; border: 1px solid #fef3c7; padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.82rem; color: #92400e;">
+                <strong>📝 หมายเหตุ:</strong> <span id="poModalNotes"></span>
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content: space-between;">
+            <a id="poModalFullLink" href="#" target="_blank" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                <span>🖨️</span> เปิดใบสั่งซื้อฉบับเต็ม
+            </a>
+            <div style="display: flex; gap: 0.65rem;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('poDetailModal')">ปิด</button>
+                <form id="poModalReceiveForm" method="POST" action="" onsubmit="return confirm('ยืนยันตรวจรับเข้าคลังจากใบสั่งซื้อนี้?\n\nระบบจะอัปเดตจำนวนคงเหลือในคลังอัตโนมัติ');" style="margin: 0;">
+                    <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 600; display: inline-flex; align-items: center; gap: 0.35rem;">
+                        <span>✅</span> ยืนยันตรวจรับเข้าคลังทันที
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const pendingPosData = {
+    {% for po in pending_pos %}
+    "{{ po.po_id }}": {
+        id: {{ po.po_id }},
+        poNumber: {{ po.po_number|tojson }},
+        orderDate: {{ po.order_date.strftime('%d/%m/%Y %H:%M')|tojson }},
+        expectedDelivery: {{ (po.expected_delivery_date.strftime('%d/%m/%Y') if po.expected_delivery_date else '-')|tojson }},
+        supplierName: {{ po.supplier.company_name|tojson }},
+        supplierContact: {{ (po.supplier.contact_person or '-')|tojson }} + ' (โทร ' + {{ (po.supplier.phone or '-')|tojson }} + ')',
+        creator: {{ (po.creator.full_name if po.creator else '-')|tojson }},
+        totalAmount: {{ "{:,.2f}".format(po.total_amount)|tojson }},
+        notes: {{ (po.notes or '')|tojson }},
+        detailUrl: {{ url_for('purchase_order_detail', po_id=po.po_id)|tojson }},
+        receiveUrl: {{ url_for('goods_receiving_from_po', po_id=po.po_id)|tojson }},
+        items: [
+            {% for item in po.items %}
+            {
+                name: {{ item.item_name|tojson }},
+                code: {{ (item.equipment.equipment_code if item.equipment else '-')|tojson }},
+                quantity: {{ item.quantity }},
+                unitPrice: {{ "{:,.2f}".format(item.unit_price)|tojson }},
+                totalPrice: {{ "{:,.2f}".format(item.total_price)|tojson }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+};
+
+function openPoQuickView(poId) {
+    const data = pendingPosData[poId];
+    if (!data) return;
+
+    document.getElementById('poModalTitle').innerText = 'ใบสั่งซื้อ ' + data.poNumber;
+    document.getElementById('poModalSubtitle').innerText = 'วันที่สั่งซื้อ: ' + data.orderDate + ' น. • ผู้จัดทำ: ' + data.creator;
+    document.getElementById('poModalSupplierName').innerText = data.supplierName;
+    document.getElementById('poModalSupplierContact').innerText = data.supplierContact;
+    document.getElementById('poModalDates').innerText = data.orderDate + ' (กำหนดส่ง: ' + data.expectedDelivery + ')';
+    document.getElementById('poModalCreator').innerText = 'ผู้จัดทำ: ' + data.creator;
+    document.getElementById('poModalItemCount').innerText = data.items.length;
+    document.getElementById('poModalTotalAmount').innerText = '฿' + data.totalAmount;
+
+    const tbody = document.getElementById('poModalItemsTableBody');
+    tbody.innerHTML = '';
+    data.items.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="text-align: center; color: var(--text-muted);">${idx + 1}</td>
+            <td>
+                <div style="font-weight: 600; color: var(--text-main);">${escapeHtml(item.name)}</div>
+                ${item.code !== '-' ? `<div style="font-size: 0.75rem; font-family: var(--font-numeric); color: var(--text-muted);">${escapeHtml(item.code)}</div>` : ''}
+            </td>
+            <td style="text-align: center; font-weight: 700; color: var(--primary);">${item.quantity} ชิ้น</td>
+            <td style="text-align: right; font-family: var(--font-numeric);">฿${item.unitPrice}</td>
+            <td style="text-align: right; font-weight: 600; font-family: var(--font-numeric);">฿${item.totalPrice}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    const notesBox = document.getElementById('poModalNotesContainer');
+    const notesText = document.getElementById('poModalNotes');
+    if (data.notes && data.notes.trim() !== '') {
+        notesText.innerText = data.notes;
+        notesBox.style.display = 'block';
+    } else {
+        notesBox.style.display = 'none';
+    }
+
+    document.getElementById('poModalFullLink').href = data.detailUrl;
+    document.getElementById('poModalReceiveForm').action = data.receiveUrl;
+
+    openModal('poDetailModal');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+</script>
+{% endblock %}
