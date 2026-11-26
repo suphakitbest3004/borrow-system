@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="ระบบสารสนเทศบริการยืม-คืนวัสดุและครุภัณฑ์พร้อมการแจ้งเตือน วิทยาลัยการอาชีพหนองหาน จังหวัดอุดรธานี บริการยืม-คืนอุปกรณ์การเรียนการสอน เครื่องมือวัด และครุภัณฑ์ออนไลน์ 24 ชั่วโมง">
+    <meta name="keywords" content="ระบบยืมคืน, ยืมคืนครุภัณฑ์, วิทยาลัยการอาชีพหนองหาน, ยืมพัสดุ, หนองหาน, อุดรธานี, อาชีวศึกษา, สอศ, nonghan, borrow return system">
+    <meta name="author" content="วิทยาลัยการอาชีพหนองหาน">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#0f172a">
+
+    <!-- Open Graph / Facebook / LINE -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="วิทยาลัยการอาชีพหนองหาน">
+    <meta property="og:title" content="ระบบบริการยืม-คืนวัสดุและครุภัณฑ์ | วิทยาลัยการอาชีพหนองหาน">
+    <meta property="og:description" content="ระบบสารสนเทศบริการยืม-คืนวัสดุและครุภัณฑ์ออนไลน์ ตรวจสอบสต็อก ยื่นคำขอยืม และรับการแจ้งเตือนอัตโนมัติ">
+    <meta property="og:locale" content="th_TH">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ระบบบริการยืม-คืนวัสดุและครุภัณฑ์ | วิทยาลัยการอาชีพหนองหาน">
+    <meta name="twitter:description" content="ระบบสารสนเทศบริการยืม-คืนวัสดุและครุภัณฑ์ออนไลน์ วิทยาลัยการอาชีพหนองหาน">
+
+    <title>{% block title %}ระบบบริการยืม-คืนวัสดุและครุภัณฑ์{% endblock %} | วิทยาลัยการอาชีพหนองหาน</title>
+    <!-- Google Fonts Preconnect & Font Stacks: Noto Sans Thai & Prompt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5.3.3 Mobile-First Framework -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="{% if current_user %}logged-in{% else %}guest-layout{% endif %}">
+    {% block guest_navbar %}
+    {% if not current_user and request.endpoint not in ['index', 'login', 'register'] %}
+    <!-- GUEST TOP NAVIGATION BAR (สำหรับผู้ใช้งานก่อนเข้าสู่ระบบ) -->
+    <header class="guest-navbar">
+        <div class="guest-nav-inner">
+            <a href="{{ url_for('index') }}" class="brand">
+                <div class="brand-icon">📦</div>
+                <div class="brand-title">
+                    <span class="main-text">ระบบยืม-คืน</span>
+                    <span class="sub-text">วิทยาลัยการอาชีพหนองหาน</span>
+                </div>
+            </a>
+
+            <!-- Action Buttons: เฉพาะเข้าสู่ระบบและสมัครสมาชิกใหม่ -->
+            <div class="guest-nav-actions">
+                <a href="{{ url_for('login') }}" class="btn btn-secondary btn-sm">
+                    <span>🔑</span> เข้าสู่ระบบ
+                </a>
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">
+                    <span>📝</span> สมัครสมาชิกใหม่
+                </a>
+            </div>
+        </div>
+    </header>
+    {% endif %}
+    {% endblock %}
+
+    {% if current_user %}
+    <!-- Mobile & Tablet Topbar (< 1024px) - Institutional Academic Mobile Header -->
+    <header class="mobile-topbar">
+        <div class="mobile-topbar-left">
+            <a href="{{ url_for('profile') }}" class="mobile-user-avatar" title="{{ current_user.full_name }}">
+                {{ current_user.first_name[0] }}
+            </a>
+            <button type="button" id="sidebarToggle" class="mobile-toggle-btn" aria-label="เปิดเมนูนำทาง" title="เมนูนำทาง">
+                ☰
+            </button>
+        </div>
+
+        <div class="mobile-topbar-center">
+            <span class="mobile-app-title">NONGHAN BORROW</span>
+            <span class="mobile-app-subtitle">วท.หนองหาน</span>
+        </div>
+
+        <div class="mobile-topbar-right">
+            <a href="{{ url_for('notifications_page') }}" class="mobile-top-btn" title="การแจ้งเตือน">
+                <span>🔔</span>
+                {% if unread_count > 0 %}<span class="notif-badge">{{ unread_count }}</span>{% endif %}
+            </a>
+            <a href="{{ url_for('logout') }}" class="mobile-top-btn mobile-logout-btn" title="ออกจากระบบ">
+                <span>⏻</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Mobile Sub-Header Context Bar (< 1024px) -->
+    <div class="mobile-subbar">
+        <div class="subbar-chip location-chip">
+            <span class="chip-icon">📍</span>
+            <span>วท.หนองหาน</span>
+        </div>
+        <div class="subbar-pill">
+            {% block page_pill %}
+                {% if request.endpoint == 'profile' %}ข้อมูลผู้ใช้งาน
+                {% elif request.endpoint == 'catalog' %}คลังพัสดุ
+                {% elif request.endpoint == 'admin_requests' %}คำขอยืม
+                {% elif request.endpoint in ['admin_returns', 'admin_fines'] %}รับคืน/ค่าปรับ
+                {% elif request.endpoint in ['admin_equipment', 'new_equipment_page'] %}จัดการอุปกรณ์
+                {% elif request.endpoint in ['purchase_orders_list', 'purchase_order_new', 'purchase_order_detail'] %}สั่งซื้อพัสดุ
+                {% elif request.endpoint in ['goods_receiving', 'goods_receiving_new', 'goods_receiving_detail'] %}รับเข้าพัสดุ
+                {% elif request.endpoint == 'admin_categories' %}หมวดหมู่พัสดุ
+                {% elif request.endpoint == 'admin_locations' %}สถานที่จัดเก็บ
+                {% elif request.endpoint == 'suppliers_list' %}บริษัทคู่ค้า
+                {% elif request.endpoint == 'admin_dashboard' %}แดชบอร์ด
+                {% elif request.endpoint == 'report_monthly' %}รายงานรายเดือน
+                {% elif request.endpoint == 'report_equipment_register' %}ทะเบียนครุภัณฑ์
+                {% elif request.endpoint == 'admin_users' %}จัดการผู้ใช้
+                {% elif request.endpoint == 'notification_logs' %}บันทึกแจ้งเตือน
+                {% elif request.endpoint == 'notifications_page' %}แจ้งเตือน
+                {% else %}ระบบยืม-คืน{% endif %}
+            {% endblock %}
+        </div>
+        <div class="subbar-chip date-chip" id="mobileCurrentDate">
+            <!-- Dynamic Date: e.g. 23 Oct 2026 -->
+            23 Oct 2026
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="app-layout">
+        {% if current_user %}
+        <!-- Sidebar Backdrop for Mobile/Tablet Drawer -->
+        <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
+
+        <!-- APP SIDEBAR NAVIGATION (Desktop Persistent / Mobile Drawer) -->
+        <aside class="app-sidebar" id="appSidebar">
+            <!-- Sidebar Header: Brand + Controls -->
+            <div class="sidebar-header">
+                <a href="{{ url_for('catalog') if current_user.role not in ['admin', 'staff'] else url_for('admin_requests') }}" class="brand">
+                    <div class="brand-icon">📦</div>
+                    <div class="brand-title">
+                        <span class="main-text">ระบบยืม-คืน</span>
+                        <span class="sub-text">วิทยาลัยการอาชีพหนองหาน</span>
+                    </div>
+                </a>
+                <div class="sidebar-header-actions">
+                    <!-- Desktop Collapse / Expand Button -->
+                    <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="ย่อ/ขยายแถบเมนู (Full-Screen View)">
+                        <span class="collapse-icon">◀</span>
+                    </button>
+                    <!-- Mobile Close Button -->
+                    <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="ปิดเมนู">✕</button>
+                </div>
+            </div>
+
+            <!-- Navigation Menu with Appropriate Groupings -->
+            <nav class="sidebar-menu">
+                <!-- Group 1: ผู้ใช้งานทั่วไป / การยืม -->
+                <div class="sidebar-section-title">
+                    <span>📌</span>
+                    <span class="section-text">เมนูหลัก & การยืม</span>
+                </div>
+                <a href="{{ url_for('catalog') }}" class="sidebar-link {% if request.endpoint == 'catalog' %}active{% endif %}" title="คลังวัสดุและครุภัณฑ์">
+                    <span class="sidebar-icon">🔍</span>
+                    <span class="link-text">คลังวัสดุ/ครุภัณฑ์</span>
+                </a>
+                <a href="{{ url_for('profile') }}" class="sidebar-link {% if request.endpoint == 'profile' %}active{% endif %}" title="ข้อมูลส่วนตัวและประวัติยืม">
+                    <span class="sidebar-icon">👤</span>
+                    <span class="link-text">ข้อมูลส่วนตัว / ประวัติยืม</span>
+                </a>
+                <a href="{{ url_for('notifications_page') }}" class="sidebar-link {% if request.endpoint == 'notifications_page' %}active{% endif %}" title="การแจ้งเตือน">
+                    <span class="sidebar-icon">🔔</span>
+                    <span class="link-text">การแจ้งเตือน</span>
+                    {% if unread_count > 0 %}
+                        <span class="badge badge-danger sidebar-badge">{{ unread_count }}</span>
+                    {% endif %}
+                </a>
+
+                <!-- Group 2: งานบริการยืม-คืน (Staff & Admin) -->
+                {% if current_user.role in ['admin', 'staff'] %}
+                    <div class="sidebar-section-title">
+                        <span>📋</span>
+                        <span class="section-text">บริการยืม-คืน</span>
+                    </div>
+                    <a href="{{ url_for('admin_requests') }}" class="sidebar-link {% if request.endpoint == 'admin_requests' %}active{% endif %}" title="จัดการคำขอยืม">
+                        <span class="sidebar-icon">📋</span>
+                        <span class="link-text">จัดการคำขอยืม</span>
+                        {% if pending_requests_count > 0 %}
+                            <span class="badge badge-warning sidebar-badge">{{ pending_requests_count }}</span>
+                        {% endif %}
+                    </a>
+                    <a href="{{ url_for('admin_returns') }}" class="sidebar-link {% if request.endpoint in ['admin_returns', 'admin_fines'] %}active{% endif %}" title="รับคืนพัสดุและค่าปรับ">
+                        <span class="sidebar-icon">📥</span>
+                        <span class="link-text">รับคืน / ค่าปรับ</span>
+                    </a>
+
+                    <!-- Group 3: จัดซื้อ & รับเข้าพัสดุ (Staff & Admin) -->
+                    <div class="sidebar-section-title">
+                        <span>📦</span>
+                        <span class="section-text">การจัดซื้อ & รับเข้าพัสดุ</span>
+                    </div>
+                    <a href="{{ url_for('purchase_orders_list') }}" class="sidebar-link {% if request.endpoint in ['purchase_orders_list', 'purchase_order_new', 'purchase_order_detail'] %}active{% endif %}" title="สั่งซื้อพัสดุ/ครุภัณฑ์">
+                        <span class="sidebar-icon">🛒</span>
+                        <span class="link-text">สั่งซื้อพัสดุ/ครุภัณฑ์</span>
+                    </a>
+                    <a href="{{ url_for('goods_receiving') }}" class="sidebar-link {% if request.endpoint in ['goods_receiving', 'goods_receiving_new', 'goods_receiving_detail'] %}active{% endif %}" title="รับเข้าวัสดุ/ครุภัณฑ์">
+                        <span class="sidebar-icon">📦</span>
+                        <span class="link-text">รับเข้าวัสดุ/ครุภัณฑ์</span>
+                    </a>
+
+                    <!-- Group 4: การจัดการข้อมูล (Data Management) -->
+                    <div class="sidebar-section-title">
+                        <span>🗂️</span>
+                        <span class="section-text">การจัดการข้อมูล</span>
+                    </div>
+                    <a href="{{ url_for('admin_equipment') }}" class="sidebar-link {% if request.endpoint in ['admin_equipment', 'new_equipment_page'] %}active{% endif %}" title="จัดการข้อมูลวัสดุและครุภัณฑ์">
+                        <span class="sidebar-icon">🛠️</span>
+                        <span class="link-text">จัดการข้อมูลอุปกรณ์</span>
+                    </a>
+                    <a href="{{ url_for('admin_categories') }}" class="sidebar-link {% if request.endpoint == 'admin_categories' %}active{% endif %}" title="จัดการประเภทและหมวดหมู่วัสดุ/ครุภัณฑ์">
+                        <span class="sidebar-icon">🏷️</span>
+                        <span class="link-text">จัดการหมวดหมู่</span>
+                    </a>
+                    <a href="{{ url_for('admin_locations') }}" class="sidebar-link {% if request.endpoint == 'admin_locations' %}active{% endif %}" title="จัดการสถานที่จัดเก็บและห้องปฏิบัติการ">
+                        <span class="sidebar-icon">📍</span>
+                        <span class="link-text">จัดการสถานที่จัดเก็บ</span>
+                    </a>
+                    <a href="{{ url_for('suppliers_list') }}" class="sidebar-link {% if request.endpoint == 'suppliers_list' %}active{% endif %}" title="จัดการข้อมูลบริษัทคู่ค้าและผู้จัดจำหน่าย">
+                        <span class="sidebar-icon">🏢</span>
+                        <span class="link-text">จัดการบริษัทคู่ค้า</span>
+                    </a>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('admin_users') }}" class="sidebar-link {% if request.endpoint == 'admin_users' %}active{% endif %}" title="จัดการข้อมูลบัญชีผู้ใช้งาน">
+                        <span class="sidebar-icon">👥</span>
+                        <span class="link-text">จัดการผู้ใช้งาน</span>
+                    </a>
+                    {% endif %}
+
+                    <!-- Group 5: เอกสาร & รายงาน -->
+                    <div class="sidebar-section-title">
+                        <span>📊</span>
+                        <span class="section-text">รายงาน & ทะเบียน</span>
+                    </div>
+                    {% if current_user.role == 'admin' %}
+                        <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}" title="แดชบอร์ดสรุปสถิติ">
+                            <span class="sidebar-icon">📊</span>
+                            <span class="link-text">แดชบอร์ดสถิติ</span>
+                        </a>
+                    {% endif %}
+                    <a href="{{ url_for('report_monthly') }}" class="sidebar-link {% if request.endpoint == 'report_monthly' %}active{% endif %}" title="รายงานสรุปรายเดือน">
+                        <span class="sidebar-icon">📅</span>
+                        <span class="link-text">รายงานรายเดือน</span>
+                    </a>
+                    <a href="{{ url_for('report_equipment_register') }}" class="sidebar-link {% if request.endpoint == 'report_equipment_register' %}active{% endif %}" title="ทะเบียนคุมครุภัณฑ์">
+                        <span class="sidebar-icon">📜</span>
+                        <span class="link-text">ทะเบียนครุภัณฑ์</span>
+                    </a>
+
+                    <!-- Group 6: ระบบ (Admin Only) -->
+                    {% if current_user.role == 'admin' %}
+                        <div class="sidebar-section-title">
+                            <span>⚙️</span>
+                            <span class="section-text">ระบบ</span>
+                        </div>
+                        <a href="{{ url_for('notification_logs') }}" class="sidebar-link {% if request.endpoint == 'notification_logs' %}active{% endif %}" title="ประวัติการส่งแจ้งเตือน LINE/Email">
+                            <span class="sidebar-icon">📨</span>
+                            <span class="link-text">บันทึกแจ้งเตือน</span>
+                        </a>
+                    {% endif %}
+                {% endif %}
+            </nav>
+
+            <!-- Sidebar Footer: User Card / Logout -->
+            <div class="sidebar-footer">
+                <a href="{{ url_for('profile') }}" class="sidebar-user-card" title="ดูข้อมูลส่วนตัว">
+                    <div class="avatar-initial">{{ current_user.first_name[0] }}</div>
+                    <div class="sidebar-user-info">
+                        <div class="sidebar-user-name">{{ current_user.full_name }}</div>
+                        <div class="sidebar-user-role">
+                            <span class="badge {{ current_user.role_badge_class }}" style="padding: 0.12rem 0.5rem; font-size: 0.68rem;">{{ current_user.role_display }}</span>
+                        </div>
+                    </div>
+                </a>
+                <a href="{{ url_for('logout') }}" class="btn btn-secondary btn-sm sidebar-logout-btn" title="ออกจากระบบ">
+                    <span class="logout-icon">🚪</span>
+                    <span class="logout-text">ออกจากระบบ</span>
+                </a>
+            </div>
+        </aside>
+        {% endif %}
+
+        <!-- Main Content Area -->
+        <div class="app-main">
+            <!-- Full Width Adaptive Container -->
+            <main class="main-content">
+                <!-- Flash Messages with Auto Dismiss -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <div class="flash-messages">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">
+                                    <span>{{ message }}</span>
+                                    <button type="button" class="alert-close" aria-label="ปิดการแจ้งเตือน">✕</button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </main>
+
+            <!-- Full-Width Responsive Footer -->
+            <footer class="app-footer">
+                <div class="footer-inner">
+                    <div class="footer-brand-col">
+                        <strong>ระบบสารสนเทศบริการยืม-คืนวัสดุและครุภัณฑ์พร้อมการแจ้งเตือน</strong>
+                        <div class="footer-sub">วิทยาลัยการอาชีพหนองหาน สำนักงานคณะกรรมการการอาชีวศึกษา</div>
+                    </div>
+                    <div class="footer-info-col">
+                        <span class="footer-badge">⚡ Real-time Notifications</span>
+                        <span>รองรับการแจ้งเตือนอัตโนมัติผ่าน Email และ LINE Messaging API</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    {% if current_user %}
+    <!-- MOBILE BOTTOM QUICK NAVIGATION BAR (< 768px) -->
+    <!-- ออกแบบให้จัดวางเมนูสำคัญที่นิ้วโป้งเอื้อมถึงง่าย ใช้งานเต็มจอทุกอุปกรณ์ -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav">
+        <a href="{{ url_for('catalog') }}" class="bottom-nav-item {% if request.endpoint == 'catalog' %}active{% endif %}">
+            <span class="bottom-nav-icon">🔍</span>
+            <span class="bottom-nav-label">คลังพัสดุ</span>
+        </a>
+
+        {% if current_user.role in ['admin', 'staff'] %}
+            <a href="{{ url_for('admin_requests') }}" class="bottom-nav-item {% if request.endpoint == 'admin_requests' %}active{% endif %}">
+                <span class="bottom-nav-icon" style="position: relative;">
+                    📋
+                    {% if pending_requests_count > 0 %}
+                        <span class="bottom-nav-badge">{{ pending_requests_count }}</span>
+                    {% endif %}
+                </span>
+                <span class="bottom-nav-label">คำขอยืม</span>
+            </a>
+            <a href="{{ url_for('admin_returns') }}" class="bottom-nav-item {% if request.endpoint == 'admin_returns' %}active{% endif %}">
+                <span class="bottom-nav-icon">📥</span>
+                <span class="bottom-nav-label">รับคืน</span>
+            </a>
+        {% else %}
+            <a href="{{ url_for('profile') }}" class="bottom-nav-item {% if request.endpoint == 'profile' %}active{% endif %}">
+                <span class="bottom-nav-icon">🪪</span>
+                <span class="bottom-nav-label">e-บัตร/โปรไฟล์</span>
+            </a>
+        {% endif %}
+
+        <a href="{{ url_for('notifications_page') }}" class="bottom-nav-item {% if request.endpoint == 'notifications_page' %}active{% endif %}">
+            <span class="bottom-nav-icon" style="position: relative;">
+                🔔
+                {% if unread_count > 0 %}
+                    <span class="bottom-nav-badge">{{ unread_count }}</span>
+                {% endif %}
+            </span>
+            <span class="bottom-nav-label">แจ้งเตือน</span>
+        </a>
+
+        <button type="button" class="bottom-nav-item" id="bottomNavMenuToggle">
+            <span class="bottom-nav-icon">⚙️</span>
+            <span class="bottom-nav-label">ตั้งค่า/เมนู</span>
+        </button>
+    </nav>
+    {% else %}
+    <!-- MOBILE BOTTOM QUICK NAVIGATION BAR (Guest / เมนูหลักบนมือถือ) -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNavGuest">
+        <a href="{{ url_for('index') }}" class="bottom-nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+            <span class="bottom-nav-icon">🏠</span>
+            <span class="bottom-nav-label">หน้าแรก</span>
+        </a>
+        <a href="{{ url_for('catalog') }}" class="bottom-nav-item {% if request.endpoint == 'catalog' %}active{% endif %}">
+            <span class="bottom-nav-icon">🔍</span>
+            <span class="bottom-nav-label">คลังพัสดุ</span>
+        </a>
+        <a href="{{ url_for('login') }}" class="bottom-nav-item {% if request.endpoint == 'login' %}active{% endif %}">
+            <span class="bottom-nav-icon">🔑</span>
+            <span class="bottom-nav-label">เข้าสู่ระบบ</span>
+        </a>
+        <a href="{{ url_for('register') }}" class="bottom-nav-item {% if request.endpoint == 'register' %}active{% endif %}">
+            <span class="bottom-nav-icon">📝</span>
+            <span class="bottom-nav-label">สมัครสมาชิก</span>
+        </a>
+    </nav>
+    {% endif %}
+
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

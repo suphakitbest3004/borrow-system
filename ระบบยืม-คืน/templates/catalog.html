@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}คลังวัสดุและครุภัณฑ์{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>📦</span> คลังวัสดุและครุภัณฑ์
+        </h1>
+        <p class="page-subtitle">สืบค้น ตรวจสอบสถานะความพร้อมใช้งาน และยื่นคำขอยืมออนไลน์</p>
+    </div>
+    {% if current_user and current_user.role in ['admin', 'staff'] %}
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="{{ url_for('admin_equipment') }}" class="btn btn-primary btn-sm">
+                <span>➕</span> เพิ่มวัสดุ/ครุภัณฑ์
+            </a>
+            <a href="{{ url_for('admin_requests') }}" class="btn btn-secondary btn-sm">
+                <span>📋</span> จัดการคำขอยืม ({{ pending_requests_count }})
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Search & Filter Bar -->
+<div class="card" style="margin-bottom: 2rem;">
+    <div class="card-body" style="padding: 1.25rem;">
+        <form method="GET" action="{{ url_for('catalog') }}" style="display: flex; flex-wrap: wrap; gap: 1.15rem; align-items: flex-end;">
+            <div style="flex: 2; min-width: 250px;">
+                <label class="form-label" style="font-size: 0.82rem; margin-bottom: 0.35rem;">ค้นหาด้วยชื่อ รหัส หรือรายละเอียด</label>
+                <input type="text" name="q" value="{{ search_query }}" class="form-control" placeholder="เช่น มัลติมิเตอร์, โปรเจคเตอร์, EQ-EL-001...">
+            </div>
+
+            <div style="flex: 1; min-width: 190px;">
+                <label class="form-label" style="font-size: 0.82rem; margin-bottom: 0.35rem;">หมวดหมู่</label>
+                <select name="category" class="form-control">
+                    <option value="">ทุกหมวดหมู่</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.category_id }}" {% if selected_cat == cat.category_id %}selected{% endif %}>
+                            {{ cat.category_name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 170px;">
+                <label class="form-label" style="font-size: 0.82rem; margin-bottom: 0.35rem;">ประเภท</label>
+                <select name="type" class="form-control">
+                    <option value="">ทั้งหมด</option>
+                    <option value="durable_goods" {% if item_type == 'durable_goods' %}selected{% endif %}>ครุภัณฑ์ (คงทน)</option>
+                    <option value="material" {% if item_type == 'material' %}selected{% endif %}>วัสดุ (สิ้นเปลือง)</option>
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button type="submit" class="btn btn-primary" style="padding: 0.68rem 1.25rem;">
+                    <span>🔍</span> ค้นหา
+                </button>
+                {% if search_query or selected_cat or item_type %}
+                    <a href="{{ url_for('catalog') }}" class="btn btn-secondary" style="padding: 0.68rem 1rem;" title="ล้างตัวกรอง">
+                        ✕ ล้าง
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Equipment Grid Cards -->
+{% if items %}
+    <div class="equipment-grid">
+        {% for item in items %}
+            <div class="equipment-card">
+                <!-- Image Box with Badge -->
+                <div class="equipment-img-box">
+                    {% if item.image_path %}
+                        <img src="{{ url_for('static', filename=item.image_path) }}" alt="{{ item.name }}" loading="lazy">
+                    {% else %}
+                        <div style="font-size: 3.5rem; color: var(--text-subtle);">📦</div>
+                    {% endif %}
+                    
+                    <div class="equipment-badge-float">
+                        <span class="badge {{ item.status_badge_class }}">
+                            {{ item.status_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Body Information -->
+                <div class="equipment-body">
+                    <div class="equipment-code">{{ item.equipment_code }}</div>
+                    <h3 class="equipment-title">{{ item.name }}</h3>
+
+                    <div class="equipment-meta">
+                        <div class="equipment-meta-item">
+                            <span>🏷️</span>
+                            <span>{{ item.category.category_name }}</span>
+                        </div>
+                        <div class="equipment-meta-item">
+                            <span>📍</span>
+                            <span>{{ item.location.location_name }}</span>
+                        </div>
+                    </div>
+
+                    {% if item.description %}
+                        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 1rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            {{ item.description }}
+                        </p>
+                    {% endif %}
+
+                    <!-- Footer -->
+                    <div class="equipment-footer">
+                        <div>
+                            <div class="stock-tag">
+                                คงเหลือ <span style="color: {% if item.available_quantity > 0 %}var(--success){% else %}var(--danger){% endif %}; font-weight: 700;">{{ item.available_quantity }}</span> / {{ item.total_quantity }}
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">
+                                {{ item.category.type_display }}
+                            </div>
+                        </div>
+
+                        <div>
+                            {% if current_user %}
+                                {% if item.available_quantity > 0 and item.status == 'available' %}
+                                    <button type="button" class="btn btn-primary btn-sm"
+                                        onclick="prepareBorrowModal('{{ item.equipment_id }}', '{{ item.name }}', '{{ item.equipment_code }}', {{ item.available_quantity }}, '{{ item.image_path or '' }}')">
+                                        📝 ขอยืม
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-secondary btn-sm" disabled style="opacity: 0.6; cursor: not-allowed;">
+                                        ไม่ว่าง
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <a href="{{ url_for('login') }}" class="btn btn-secondary btn-sm">
+                                    เข้าสู่ระบบเพื่อยืม
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="card" style="text-align: center; padding: 4rem 2rem;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">ลองเปลี่ยนคำค้นหา หรือล้างตัวกรองหมวดหมู่</p>
+        <a href="{{ url_for('catalog') }}" class="btn btn-primary btn-sm">ดูรายการทั้งหมด</a>
+    </div>
+{% endif %}
+
+<!-- Borrow Request Modal -->
+<div class="modal-backdrop" id="borrowModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 class="modal-title">📝 แบบฟอร์มยื่นคำขอยืมวัสดุ/ครุภัณฑ์</h2>
+            <button type="button" class="modal-close" onclick="closeModal('borrowModal')">✕</button>
+        </div>
+        <form action="{{ url_for('submit_borrow_request') }}" method="POST">
+            <div class="modal-body">
+                <input type="hidden" name="equipment_id" id="borrowEquipmentId">
+
+                <!-- Selected Item Preview -->
+                <div style="display: flex; gap: 1rem; background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; align-items: center;">
+                    <div style="width: 70px; height: 70px; background: white; border-radius: var(--radius-sm); border: 1px solid var(--border); overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                        <img id="borrowItemImage" src="" alt="Equipment" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div>
+                        <div id="borrowItemCode" style="font-size: 0.75rem; font-family: monospace; color: var(--text-muted);"></div>
+                        <div id="borrowItemName" style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);"></div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                            จำนวนที่พร้อมให้ยืม: <span id="borrowMaxQtyText" style="font-weight: 700; color: var(--success);"></span> ชิ้น
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">จำนวนที่ต้องการยืม <span style="color: var(--danger);">*</span></label>
+                        <input type="number" name="quantity" id="borrowQuantityInput" class="form-control" value="1" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">กำหนดส่งคืนภายในวันที่ <span style="color: var(--danger);">*</span></label>
+                        <input type="date" name="expected_return_date" id="borrowReturnDate" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">วัตถุประสงค์ในการขอยืม <span style="color: var(--danger);">*</span></label>
+                    <textarea name="purpose" class="form-control" rows="3" placeholder="ระบุเหตุผล เช่น ใช้ในรายวิชาโครงการ, งานแข่งขันทักษะวิชาชีพ หรือปฏิบัติการทดลอง" required></textarea>
+                </div>
+
+                <div style="background: var(--warning-bg); border: 1px solid var(--warning-border); padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.8rem; color: var(--warning);">
+                    ⚠️ <strong>เงื่อนไขการยืม:</strong> ผู้ยืมต้องนำอุปกรณ์ส่งคืนภายในกำหนดเวลา หากเกินกำหนดจะมีค่าปรับวันละ 100 บาท ตามระเบียบของวิทยาลัยการอาชีพหนองหาน
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('borrowModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary">ส่งคำขอยืม</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

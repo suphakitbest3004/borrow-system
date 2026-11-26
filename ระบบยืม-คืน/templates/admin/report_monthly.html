@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}รายงานสรุปการยืม-คืนวัสดุและครุภัณฑ์ ประจำเดือน {{ month_name }} {{ year }}{% endblock %}
+
+{% block extra_head %}
+<style>
+@media print {
+    .no-print { display: none !important; }
+    body { background: white !important; }
+    .app-layout { display: block !important; }
+    .app-sidebar { display: none !important; }
+    .app-main { margin: 0 !important; padding: 0 !important; }
+    .main-content { padding: 0 !important; }
+    .app-footer { display: none !important; }
+    .mobile-topbar { display: none !important; }
+    .report-sheet { box-shadow: none !important; border: none !important; margin: 0 !important; page-break-after: avoid; }
+    table { font-size: 0.72rem !important; }
+}
+.report-sheet {
+    background: #fff; border: 1px solid #333; border-radius: 4px;
+    padding: 1.5rem 2rem; font-family: 'IBM Plex Sans Thai', 'Prompt', sans-serif;
+    font-size: 0.88rem; color: #111; max-width: 1000px; margin: 0 auto; line-height: 1.6;
+}
+.report-header { text-align: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 3px double #1a1a2e; }
+.report-header h1 { font-size: 1rem; font-weight: 700; margin: 0 0 0.15rem 0; color: #1a1a2e; }
+.report-header .sub { font-size: 0.78rem; color: #555; }
+.report-doc-title {
+    text-align: center; font-size: 1.05rem; font-weight: 700; margin: 0.75rem 0;
+    padding: 0.4rem; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc;
+    color: #1a1a2e;
+}
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin: 1rem 0; }
+.stat-box {
+    border: 1px solid #ddd; border-radius: 4px; padding: 0.6rem 0.75rem;
+    text-align: center; background: #f9f9f9;
+}
+.stat-box .stat-num { font-size: 1.6rem; font-weight: 700; color: #1a1a2e; line-height: 1; }
+.stat-box .stat-label { font-size: 0.72rem; color: #666; margin-top: 0.25rem; }
+.report-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin: 0.75rem 0; }
+.report-table th { background: #1a1a2e; color: #fff; padding: 0.4rem 0.5rem; text-align: center; font-weight: 600; font-size: 0.73rem; }
+.report-table td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; vertical-align: middle; }
+.report-table tbody tr:nth-child(even) { background: #f5f5f5; }
+.section-title { font-weight: 700; font-size: 0.85rem; margin: 1rem 0 0.5rem 0; color: #1a1a2e; border-left: 4px solid #1a1a2e; padding-left: 0.5rem; }
+.signature-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2rem; }
+.signature-box { text-align: center; }
+.signature-line { border-bottom: 1px solid #555; height: 40px; margin-bottom: 0.4rem; }
+.sig-label { font-size: 0.73rem; font-weight: 600; color: #1a1a2e; }
+.sig-name { font-size: 0.75rem; color: #333; }
+.sig-date { font-size: 0.7rem; color: #777; margin-top: 0.2rem; }
+.sig-dept { font-size: 0.68rem; color: #999; }
+.filter-form { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.25rem; padding: 1rem; background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border); }
+.filter-form label { font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.25rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1060px; margin: 0 auto;">
+    <div class="no-print">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.75rem;">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">← ย้อนกลับ</a>
+            <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">🖨️ พิมพ์รายงาน (Print)</button>
+        </div>
+        <!-- Filter Form -->
+        <form method="GET" class="filter-form">
+            <div>
+                <label>เดือน</label>
+                <select name="month" class="form-control" style="min-width:120px;">
+                    {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>
+                        {% set month_names = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'] %}
+                        {{ month_names[m-1] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>ปี (พ.ศ.)</label>
+                <input type="number" name="year" class="form-control" value="{{ year }}" min="2560" max="2580" style="min-width:90px;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">🔍 ดูรายงาน</button>
+        </form>
+    </div>
+
+    <div class="report-sheet">
+        <!-- Header -->
+        <div class="report-header">
+            <div style="font-size:1.5rem; margin-bottom:0.3rem;">🏫</div>
+            <h1>วิทยาลัยการอาชีพหนองหาน</h1>
+            <div class="sub">Nonghan Industrial and Community Education College</div>
+            <div class="sub">งานพัสดุและสินทรัพย์ถาวร ฝ่ายบริหารทรัพยากร</div>
+        </div>
+
+        <div class="report-doc-title">รายงานสรุปการยืม-คืนวัสดุและครุภัณฑ์<br>ประจำเดือน {{ month_name }} พ.ศ. {{ year }}</div>
+
+        <!-- Stats Summary -->
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-num">{{ total_requests }}</div>
+                <div class="stat-label">คำขอยืมทั้งหมด</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" style="color: #27ae60;">{{ approved_count }}</div>
+                <div class="stat-label">อนุมัติแล้ว</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" style="color: #2980b9;">{{ returned_count }}</div>
+                <div class="stat-label">คืนแล้ว</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" style="color: #c0392b;">{{ overdue_count }}</div>
+                <div class="stat-label">เกินกำหนด</div>
+            </div>
+        </div>
+        <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-top: 0;">
+            <div class="stat-box">
+                <div class="stat-num" style="color: #e67e22;">{{ total_fines|round(2) }}</div>
+                <div class="stat-label">ค่าปรับรวม (บาท)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" style="color: #8e44ad;">{{ pending_fines|round(2) }}</div>
+                <div class="stat-label">ค่าปรับค้างชำระ (บาท)</div>
+            </div>
+        </div>
+
+        <!-- Borrow Table -->
+        <div class="section-title">รายการยืมวัสดุ/ครุภัณฑ์ ประจำเดือน {{ month_name }} {{ year }}</div>
+        {% if borrowings %}
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th style="width:4%">ที่</th>
+                    <th style="width:10%">เลขที่ใบยืม</th>
+                    <th style="width:18%">ชื่อผู้ยืม</th>
+                    <th style="width:10%">รหัส</th>
+                    <th style="width:22%">ชื่ออุปกรณ์</th>
+                    <th style="width:5%; text-align:center">จำนวน</th>
+                    <th style="width:10%; text-align:center">วันที่ยืม</th>
+                    <th style="width:10%; text-align:center">กำหนดคืน</th>
+                    <th style="width:11%">สถานะ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in borrowings %}
+                <tr>
+                    <td style="text-align:center">{{ loop.index }}</td>
+                    <td style="font-family:monospace; font-size:0.7rem">BF-{{ '%05d' % b.borrow_id }}</td>
+                    <td>{{ b.user.full_name }}<br><span style="font-size:0.68rem; color:#777">{{ b.user.department or '' }}</span></td>
+                    <td style="font-family:monospace; font-size:0.7rem">{{ b.equipment.equipment_code }}</td>
+                    <td>{{ b.equipment.name }}</td>
+                    <td style="text-align:center; font-weight:700">{{ b.quantity }}</td>
+                    <td style="text-align:center">{{ b.borrow_date.strftime('%d/%m/%Y') }}</td>
+                    <td style="text-align:center; {% if b.is_overdue %}color:#c0392b; font-weight:700;{% endif %}">{{ b.due_date.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        {% if b.status == 'returned' %}✅ คืนแล้ว
+                        {% elif b.is_overdue %}🔴 เกินกำหนด
+                        {% else %}🔵 กำลังยืม{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; color: #888; padding: 1.5rem; border: 1px dashed #ddd; border-radius: 4px;">ไม่มีรายการยืมในเดือนนี้</div>
+        {% endif %}
+
+        <!-- Overdue / Fine Table -->
+        {% if fines %}
+        <div class="section-title" style="margin-top:1.25rem;">รายการค่าปรับ ประจำเดือน {{ month_name }} {{ year }}</div>
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>ที่</th>
+                    <th>เลขที่ใบเสร็จ</th>
+                    <th>ชื่อผู้ชำระ</th>
+                    <th>ชื่ออุปกรณ์</th>
+                    <th style="text-align:center">วันที่เกิน</th>
+                    <th style="text-align:right">ค่าปรับล่าช้า</th>
+                    <th style="text-align:right">ค่าเสียหาย</th>
+                    <th style="text-align:right">รวม (บาท)</th>
+                    <th>สถานะ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in fines %}
+                <tr>
+                    <td style="text-align:center">{{ loop.index }}</td>
+                    <td style="font-family:monospace; font-size:0.7rem">{{ f.receipt_number }}</td>
+                    <td>{{ f.return_record.borrowing.user.full_name }}</td>
+                    <td>{{ f.return_record.borrowing.equipment.name }}</td>
+                    <td style="text-align:center">{{ f.return_record.late_days }} วัน</td>
+                    <td style="text-align:right">{{ f.late_fine|round(2) }}</td>
+                    <td style="text-align:right">{{ f.damage_fine|round(2) }}</td>
+                    <td style="text-align:right; font-weight:700; color:#c0392b">{{ f.total_fine|round(2) }}</td>
+                    <td style="{% if f.payment_status == 'paid' %}color:#155724{% else %}color:#c0392b{% endif %}; font-weight:600">{{ f.status_display }}</td>
+                </tr>
+                {% endfor %}
+                <tr style="background: #f0f0f0; font-weight: 700;">
+                    <td colspan="7" style="text-align:right; border:none">รวมค่าปรับทั้งหมด</td>
+                    <td style="text-align:right; color:#c0392b; font-size:1.05rem">{{ total_fines|round(2) }}</td>
+                    <td>บาท</td>
+                </tr>
+            </tbody>
+        </table>
+        {% endif %}
+
+        <!-- Signatures -->
+        <div class="signature-row">
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="sig-label">ลายมือชื่อผู้จัดทำรายงาน</div>
+                <div class="sig-name">(....................................................)</div>
+                <div class="sig-dept">เจ้าหน้าที่พัสดุ / ผู้รับผิดชอบ</div>
+                <div class="sig-date">วันที่ ......../........../..........[…]</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="sig-label">ลายมือชื่อหัวหน้างานพัสดุ</div>
+                <div class="sig-name">(....................................................)</div>
+                <div class="sig-dept">หัวหน้างานพัสดุและสินทรัพย์</div>
+                <div class="sig-date">วันที่ ......../........../..........[…]</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="sig-label">ลายมือชื่อรับทราบ</div>
+                <div class="sig-name">(....................................................)</div>
+                <div class="sig-dept">รองผู้อำนวยการฝ่ายบริหารฯ</div>
+                <div class="sig-date">วันที่ ......../........../..........[…]</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid #ddd; font-size: 0.68rem; color: #888; text-align: center;">
+            รายงานนี้ออกโดยระบบสารสนเทศบริการยืม-คืนวัสดุและครุภัณฑ์ วิทยาลัยการอาชีพหนองหาน |
+            พิมพ์เมื่อ: {{ now.strftime('%d/%m/%Y %H:%M') }} น.
+        </div>
+    </div>
+</div>
+{% endblock %}

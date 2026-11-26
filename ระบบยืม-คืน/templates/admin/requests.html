@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}จัดการคำขอยืมและอนุมัติ (เจ้าหน้าที่/ผู้ดูแล){% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>📋</span> จัดการคำขอยืมและอนุมัติ (Approval Center)
+        </h1>
+        <p class="page-subtitle">ตรวจสอบคำขอยืมจากนักศึกษาและบุคลากร พิจารณาอนุมัติหรือปฏิเสธ พร้อมระบบแจ้งเตือนอัตโนมัติ</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem;">
+        <a href="{{ url_for('notification_logs') }}" class="btn btn-secondary btn-sm" title="ดูประวัติการส่งแจ้งเตือน LINE/Email">
+            <span>🔔</span> ประวัติแจ้งเตือน LINE / Email
+        </a>
+    </div>
+</div>
+
+<!-- Filter Pills -->
+<div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+    <a href="{{ url_for('admin_requests', status='pending') }}" class="btn btn-sm {% if current_filter == 'pending' %}btn-primary{% else %}btn-secondary{% endif %}">
+        ⏳ รอพิจารณาอนุมัติ
+        {% if pending_requests_count > 0 %}
+            <span class="badge badge-warning" style="margin-left: 0.3rem;">{{ pending_requests_count }}</span>
+        {% endif %}
+    </a>
+    <a href="{{ url_for('admin_requests', status='approved') }}" class="btn btn-sm {% if current_filter == 'approved' %}btn-primary{% else %}btn-secondary{% endif %}">
+        ✅ อนุมัติแล้ว
+    </a>
+    <a href="{{ url_for('admin_requests', status='rejected') }}" class="btn btn-sm {% if current_filter == 'rejected' %}btn-primary{% else %}btn-secondary{% endif %}">
+        ❌ ไม่อนุมัติ
+    </a>
+    <a href="{{ url_for('admin_requests', status='all') }}" class="btn btn-sm {% if current_filter == 'all' %}btn-primary{% else %}btn-secondary{% endif %}">
+        📋 ทั้งหมด
+    </a>
+</div>
+
+<!-- Requests Table Card -->
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        {% if requests_list %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>รหัสคำขอ</th>
+                            <th>ข้อมูลผู้ยื่นคำขอ</th>
+                            <th>รายการอุปกรณ์ที่ขอ</th>
+                            <th>จำนวน</th>
+                            <th>วันที่ยื่น</th>
+                            <th>กำหนดส่งคืน</th>
+                            <th>สถานะ</th>
+                            <th style="text-align: right;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests_list %}
+                            <tr>
+                                <td style="font-family: monospace; font-weight: 600;">
+                                    #REQ-{{ req.request_id }}
+                                </td>
+                                <td>
+                                    <div style="font-weight: 600;">{{ req.user.full_name }}</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                        {{ req.user.student_or_citizen_id }} ({{ req.user.role_display }})
+                                    </div>
+                                    <div style="font-size: 0.72rem; color: var(--text-subtle);">
+                                        📞 {{ req.user.phone_number or 'ไม่มีเบอร์' }} 
+                                        {% if req.user.line_user_id %}
+                                            | <span style="color: var(--success);">LINE ID</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                        {% if req.equipment.image_path %}
+                                            <img src="{{ url_for('static', filename=req.equipment.image_path) }}" alt="" style="width: 38px; height: 38px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border);">
+                                        {% else %}
+                                            <div style="width: 38px; height: 38px; background: var(--bg-subtle); display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm);">📦</div>
+                                        {% endif %}
+                                        <div>
+                                            <div style="font-weight: 600;">{{ req.equipment.name }}</div>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                                {{ req.equipment.equipment_code }} | พร้อมให้ยืม: {{ req.equipment.available_quantity }}
+                                            </div>
+                                            {% if req.purpose %}
+                                                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; font-style: italic;">
+                                                    "{{ req.purpose }}"
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong>{{ req.quantity }}</strong> ชิ้น
+                                </td>
+                                <td>
+                                    <div style="font-size: 0.85rem;">{{ req.request_date.strftime('%d/%m/%Y') }}</div>
+                                    <div style="font-size: 0.72rem; color: var(--text-muted);">{{ req.request_date.strftime('%H:%M น.') }}</div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 0.85rem; font-weight: 600;">{{ req.expected_return_date.strftime('%d/%m/%Y') }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge {{ req.status_badge_class }}">
+                                        {{ req.status_display }}
+                                    </span>
+                                </td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                     {% if req.status == 'pending' %}
+                                        <!-- One Click Approval Button -->
+                                        <form action="{{ url_for('approve_request', request_id=req.request_id) }}" method="POST" style="display: inline-block;">
+                                            <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('ยืนยันการอนุมัติคำขอยืมรายการนี้? ระบบจะส่งข้อความแจ้งเตือนอัตโนมัติไปยังผู้ยืม')">
+                                                <span>✓</span> อนุมัติ
+                                            </button>
+                                        </form>
+
+                                        <!-- Reject Button -->
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="prepareRejectModal('{{ req.request_id }}', '{{ req.user.full_name }}', '{{ req.equipment.name }}')">
+                                            <span>✕</span> ปฏิเสธ
+                                        </button>
+                                    {% elif req.status == 'approved' %}
+                                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem;">
+                                            <span style="font-size: 0.8rem; color: var(--success); font-weight: 500;">
+                                                ✓ อนุมัติแล้ว (โดย {{ req.approver.first_name if req.approver else 'เจ้าหน้าที่' }})
+                                            </span>
+                                            {% if req.borrowing %}
+                                            <a href="{{ url_for('borrow_permit', borrow_id=req.borrowing.borrow_id) }}" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 0.72rem; padding: 0.2rem 0.6rem;">
+                                                🖨️ พิมพ์ใบอนุญาตยืม
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    {% elif req.status == 'rejected' %}
+                                        <div style="font-size: 0.8rem; color: var(--danger); text-align: right;">
+                                            <div>ไม่อนุมัติ</div>
+                                            <div style="font-size: 0.72rem; color: var(--text-muted);">{{ req.rejection_reason or '-' }}</div>
+                                        </div>
+                                    {% endif %}
+
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3.5rem 1rem; color: var(--text-muted);">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">✨</div>
+                <p>ไม่มีรายการคำขอยืมในสถานะนี้</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Rejection Reason Modal -->
+<div class="modal-backdrop" id="rejectModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 class="modal-title">❌ ระบุเหตุผลการไม่อนุมัติคำขอยืม</h2>
+            <button type="button" class="modal-close" onclick="closeModal('rejectModal')">✕</button>
+        </div>
+        <form id="rejectForm" method="POST">
+            <div class="modal-body">
+                <div style="background: var(--bg-subtle); padding: 0.85rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.85rem;">
+                    <div><strong>ผู้ยื่นคำขอ:</strong> <span id="rejectApplicantName"></span></div>
+                    <div><strong>อุปกรณ์:</strong> <span id="rejectEquipmentName"></span></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">เหตุผลที่ไม่อนุมัติ <span style="color: var(--danger);">*</span></label>
+                    <textarea name="rejection_reason" id="rejectReasonInput" class="form-control" rows="3" placeholder="เช่น อุปกรณ์มีภารกิจใช้งานในวันดังกล่าว, อยู่ระหว่างตรวจเช็คสภาพ หรือขอให้ติดต่อห้องพัสดุโดยตรง" required></textarea>
+                    <div class="form-text">ข้อความนี้จะถูกส่งแจ้งเตือนไปยังผู้ยื่นคำขอทาง LINE และ Email</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('rejectModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-danger">ยืนยันการปฏิเสธคำขอ</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
