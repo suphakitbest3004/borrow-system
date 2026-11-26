@@ -17,8 +17,11 @@
         <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('addEquipmentModal')">
             <span>⚡</span> เพิ่มด่วน (Modal)
         </button>
-        <a href="{{ url_for('admin_categories') }}" class="btn btn-secondary btn-sm">
-            <span>🏷️</span> จัดการประเภทใหม่
+        <a href="{{ url_for('admin_categories') }}" class="btn btn-secondary btn-sm" title="จัดการหมวดหมู่วัสดุ/ครุภัณฑ์">
+            <span>🏷️</span> หมวดหมู่
+        </a>
+        <a href="{{ url_for('admin_locations') }}" class="btn btn-secondary btn-sm" title="จัดการสถานที่จัดเก็บ">
+            <span>📍</span> สถานที่จัดเก็บ
         </a>
     </div>
 </div>
@@ -157,8 +160,9 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">รหัสพัสดุ/ครุภัณฑ์ <span style="color: var(--danger);">*</span></label>
-                        <input type="text" name="equipment_code" class="form-control" placeholder="เช่น EQ-EL-010 หรือบาร์โค้ด" required>
+                        <label class="form-label">รหัสพัสดุ/ครุภัณฑ์ <span class="badge badge-info" style="font-size: 0.72rem; vertical-align: middle; margin-left: 4px;">Auto Number</span> <span style="color: var(--danger);">*</span></label>
+                        <input type="text" name="equipment_code" id="addEquipmentCode" class="form-control" value="{{ next_equipment_code }}" placeholder="เช่น EQ-0001 (ระบบออกให้อัตโนมัติ)" required style="font-weight: 600;">
+                        <span class="form-text">✨ ระบบสร้างรหัสถัดไปให้อัตโนมัติ หรือแก้ไขตามรหัสครุภัณฑ์จริงได้</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label">จำนวนทั้งหมด (ชิ้น) <span style="color: var(--danger);">*</span></label>

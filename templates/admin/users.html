@@ -10,10 +10,118 @@
         </h1>
         <p class="page-subtitle">เพิ่ม ลบ แก้ไข ข้อมูลผู้ใช้งาน และกำหนดสิทธิ์การเข้าถึงระบบ (CRUD)</p>
     </div>
-    <div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="togglePermissionsGuide()">
+            <span>🛡️</span> ผังกำหนดสิทธิ์การใช้งาน
+        </button>
         <button type="button" class="btn btn-primary btn-sm" onclick="openModal('addUserModal')">
             <span>➕</span> เพิ่มผู้ใช้งานใหม่
         </button>
+    </div>
+</div>
+
+<!-- Role & Permissions Guide Section (ผังกำหนดสิทธิ์การเข้าถึงหน้าจอตามประเภทการใช้งาน) -->
+<div class="card" id="permissionsGuideCard" style="display: none; margin-bottom: 1.5rem; border-left: 4px solid var(--accent-blue);">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem;">
+        <h3 class="card-title" style="font-size: 1rem;">
+            <span>🛡️</span> ผังกำหนดสิทธิ์การเข้าถึงหน้าจอตามประเภทการใช้งาน (Role & Permissions Matrix)
+        </h3>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="togglePermissionsGuide()">✕ ปิดผัง</button>
+    </div>
+    <div class="card-body" style="padding: 1.25rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 1rem;">
+            <!-- นักเรียน/นักศึกษา -->
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <strong style="font-size: 0.95rem;">🎓 นักเรียน/นักศึกษา</strong>
+                    <span class="badge badge-info">student</span>
+                </div>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.65rem;">ผู้ใช้งานทั่วไปสำหรับยืม-คืนอุปกรณ์การเรียน</p>
+                <div style="font-size: 0.8rem; line-height: 1.6;">
+                    <div style="font-weight: 600; color: var(--success); margin-bottom: 0.25rem;">✅ หน้าที่เข้าถึงได้:</div>
+                    <ul style="padding-left: 1.2rem; margin: 0; color: var(--text-main);">
+                        <li>คลังวัสดุ/ครุภัณฑ์ (สืบค้น/สต็อก)</li>
+                        <li>ยื่นคำขอยืมอุปกรณ์ออนไลน์</li>
+                        <li>ข้อมูลส่วนตัว & e-บัตรสมาชิก</li>
+                        <li>การแจ้งเตือนส่วนตัว</li>
+                    </ul>
+                    <div style="font-weight: 600; color: var(--danger); margin-top: 0.5rem; margin-bottom: 0.25rem;">❌ หน้าที่ไม่มีสิทธิ์:</div>
+                    <ul style="padding-left: 1.2rem; margin: 0; color: var(--text-muted);">
+                        <li>บริการยืม-คืน & อนุมัติ</li>
+                        <li>จัดซื้อ & รับเข้าพัสดุ</li>
+                        <li>การจัดการข้อมูล & รายงาน</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- อาจารย์/ครูผู้สอน -->
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <strong style="font-size: 0.95rem;">👨‍🏫 อาจารย์/ครูผู้สอน</strong>
+                    <span class="badge badge-primary">teacher</span>
+                </div>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.65rem;">ผู้ใช้งานสำหรับยืมสื่อและอุปกรณ์การสอน</p>
+                <div style="font-size: 0.8rem; line-height: 1.6;">
+                    <div style="font-weight: 600; color: var(--success); margin-bottom: 0.25rem;">✅ หน้าที่เข้าถึงได้:</div>
+                    <ul style="padding-left: 1.2rem; margin: 0; color: var(--text-main);">
+                        <li>คลังวัสดุ/ครุภัณฑ์ (สืบค้น/สต็อก)</li>
+                        <li>ยื่นคำขอยืมอุปกรณ์การสอน</li>
+                        <li>ข้อมูลส่วนตัว & e-บัตรอาจารย์</li>
+                        <li>การแจ้งเตือนส่วนตัว</li>
+                    </ul>
+                    <div style="font-weight: 600; color: var(--danger); margin-top: 0.5rem; margin-bottom: 0.25rem;">❌ หน้าที่ไม่มีสิทธิ์:</div>
+                    <ul style="padding-left: 1.2rem; margin: 0; color: var(--text-muted);">
+                        <li>อนุมัติคำขอยืม-คืน</li>
+                        <li>จัดซื้อ & รับเข้าพัสดุ</li>
+                        <li>การจัดการข้อมูล & รายงาน</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- เจ้าหน้าที่พัสดุ -->
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <strong style="font-size: 0.95rem;">📦 เจ้าหน้าที่พัสดุ</strong>
+                    <span class="badge badge-warning">staff</span>
+                </div>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.65rem;">ผู้ปฏิบัติงานคลังพัสดุ ยืม-คืน และจัดซื้อ</p>
+                <div style="font-size: 0.8rem; line-height: 1.6;">
+                    <div style="font-weight: 600; color: var(--success); margin-bottom: 0.25rem;">✅ หน้าที่เข้าถึงได้:</div>
+                    <ul style="padding-left: 1.2rem; margin: 0; color: var(--text-main);">
+                        <li>จัดการคำขอยืม (อนุมัติ/ปฏิเสธ)</li>
+                        <li>รับคืนพัสดุ & คิดค่าปรับ</li>
+                        <li>สั่งซื้อพัสดุ & ตรวจรับเข้า</li>
+                        <li>จัดการอุปกรณ์, หมวดหมู่, สถานที่, บริษัทคู่ค้า</li>
+                        <li>ทะเบียนครุภัณฑ์ & รายงานรายเดือน</li>
+                    </ul>
+                    <div style="font-weight: 600; color: var(--danger); margin-top: 0.5rem; margin-bottom: 0.25rem;">❌ หน้าที่ไม่มีสิทธิ์:</div>
+                    <ul style="padding-left: 1.2rem; margin: 0; color: var(--text-muted);">
+                        <li>จัดการบัญชีผู้ใช้งาน</li>
+                        <li>ลบข้อมูลหลักสำคัญ (สิทธิ์ Admin)</li>
+                        <li>ดูบันทึกแจ้งเตือนระบบ</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- ผู้ดูแลระบบ -->
+            <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 1rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <strong style="font-size: 0.95rem;">👑 ผู้ดูแลระบบ</strong>
+                    <span class="badge badge-danger">admin</span>
+                </div>
+                <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.65rem;">สิทธิ์สูงสุด เข้าถึงและควบคุมทุกหน้าการทำงาน</p>
+                <div style="font-size: 0.8rem; line-height: 1.6;">
+                    <div style="font-weight: 600; color: var(--success); margin-bottom: 0.25rem;">✅ หน้าที่เข้าถึงได้: (Full Access)</div>
+                    <ul style="padding-left: 1.2rem; margin: 0; color: var(--text-main);">
+                        <li><strong>ทุกหน้าการทำงานของระบบ 100%</strong></li>
+                        <li>จัดการบัญชีผู้ใช้งาน (เพิ่ม/แก้/ลบ/รีเซ็ตรหัส)</li>
+                        <li>แดชบอร์ดสถิติภาพรวมผู้บริหาร</li>
+                        <li>บันทึกแจ้งเตือน LINE & Email</li>
+                        <li>สิทธิ์ลบข้อมูลทุกตารางในระบบ</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -26,7 +134,7 @@
             </div>
             <div style="flex: 1; min-width: 180px;">
                 <select name="role" class="form-control" onchange="this.form.submit()">
-                    <option value="">ทุกระดับสิทธิ์</option>
+                    <option value="">ทุกประเภทการใช้งาน</option>
                     <option value="student" {% if selected_role == 'student' %}selected{% endif %}>นักเรียน/นักศึกษา</option>
                     <option value="teacher" {% if selected_role == 'teacher' %}selected{% endif %}>อาจารย์/ครูผู้สอน</option>
                     <option value="staff" {% if selected_role == 'staff' %}selected{% endif %}>เจ้าหน้าที่พัสดุ</option>
@@ -52,7 +160,7 @@
                             <th>รหัสประจำตัว</th>
                             <th>ชื่อ - นามสกุล</th>
                             <th>อีเมล</th>
-                            <th>ระดับสิทธิ์</th>
+                            <th>ประเภทการใช้งาน</th>
                             <th>แผนก/สังกัด</th>
                             <th>เบอร์โทร</th>
                             <th>LINE ID</th>
@@ -129,8 +237,8 @@
                         <input type="text" name="student_or_citizen_id" class="form-control" placeholder="เช่น 6630128001" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">สิทธิ์การใช้งาน (Role) <span style="color: var(--danger);">*</span></label>
-                        <select name="role" class="form-control" required>
+                        <label class="form-label">ประเภทการใช้งาน <span style="color: var(--danger);">*</span></label>
+                        <select name="role" id="addUserRole" class="form-control" onchange="updateRolePermissions(this.value, 'add')" required>
                             <option value="student">นักเรียน/นักศึกษา</option>
                             <option value="teacher">อาจารย์/ครูผู้สอน</option>
                             <option value="staff">เจ้าหน้าที่พัสดุ</option>
@@ -138,6 +246,9 @@
                         </select>
                     </div>
                 </div>
+
+                <!-- Dynamic Role Permission Hint Box for Add User -->
+                <div id="addRolePermHint" class="role-permission-box"></div>
 
                 <div class="form-group">
                     <label class="form-label">อีเมล <span style="color: var(--danger);">*</span></label>
@@ -200,8 +311,8 @@
                         <input type="text" name="student_or_citizen_id" id="editUserIdCode" class="form-control" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">สิทธิ์การใช้งาน (Role)</label>
-                        <select name="role" id="editUserRole" class="form-control" required>
+                        <label class="form-label">ประเภทการใช้งาน <span style="color: var(--danger);">*</span></label>
+                        <select name="role" id="editUserRole" class="form-control" onchange="updateRolePermissions(this.value, 'edit')" required>
                             <option value="student">นักเรียน/นักศึกษา</option>
                             <option value="teacher">อาจารย์/ครูผู้สอน</option>
                             <option value="staff">เจ้าหน้าที่พัสดุ</option>
@@ -209,6 +320,9 @@
                         </select>
                     </div>
                 </div>
+
+                <!-- Dynamic Role Permission Hint Box for Edit User -->
+                <div id="editRolePermHint" class="role-permission-box"></div>
 
                 <div class="form-row">
                     <div class="form-group">
@@ -281,6 +395,113 @@
 
 {% block extra_scripts %}
 <script>
+const rolePermissionsData = {
+    'student': {
+        title: '🎓 นักเรียน/นักศึกษา (Student)',
+        badgeClass: 'badge-info',
+        summary: 'ผู้ใช้งานทั่วไปสำหรับยืม-คืนอุปกรณ์และเครื่องมือการเรียนการสอน',
+        canAccess: [
+            'คลังวัสดุ/ครุภัณฑ์ (สืบค้น ดูรูปภาพ และเช็คสต็อก)',
+            'ยื่นคำขอยืมวัสดุ/ครุภัณฑ์ออนไลน์',
+            'ข้อมูลส่วนตัว ประวัติการยืม และ e-บัตรสมาชิกดิจิทัล',
+            'รับการแจ้งเตือนส่วนตัว (ระบบ / Email / LINE)'
+        ],
+        cannotAccess: [
+            'บริการยืม-คืน (ไม่อนุญาตให้อนุมัติหรือรับคืน)',
+            'การจัดซื้อ & รับเข้าพัสดุ',
+            'การจัดการข้อมูล (อุปกรณ์, หมวดหมู่, สถานที่, บริษัทคู่ค้า, ผู้ใช้งาน)',
+            'รายงานสถิติ และการตั้งค่าระบบ'
+        ]
+    },
+    'teacher': {
+        title: '👨‍🏫 อาจารย์/ครูผู้สอน (Teacher)',
+        badgeClass: 'badge-primary',
+        summary: 'ผู้ใช้งานระดับอาจารย์สำหรับยืมสื่อและอุปกรณ์สำหรับการเรียนการสอน',
+        canAccess: [
+            'คลังวัสดุ/ครุภัณฑ์ (สืบค้นและดูสต็อกอุปกรณ์)',
+            'ยื่นคำขอยืมวัสดุ/ครุภัณฑ์สำหรับการสอน',
+            'ข้อมูลส่วนตัว ประวัติการยืม และ e-บัตรสมาชิกอาจารย์',
+            'รับการแจ้งเตือนส่วนตัว'
+        ],
+        cannotAccess: [
+            'อนุมัติคำขอยืม-คืน และบันทึกค่าปรับ',
+            'การจัดซื้อ & รับเข้าพัสดุ',
+            'การจัดการข้อมูลและระบบ'
+        ]
+    },
+    'staff': {
+        title: '📦 เจ้าหน้าที่พัสดุ (Staff)',
+        badgeClass: 'badge-warning',
+        summary: 'ผู้ปฏิบัติงานคลังพัสดุ บริการยืม-คืน งานจัดซื้อ และคุมสต็อก',
+        canAccess: [
+            'บริการยืม-คืน (ตรวจสอบและอนุมัติ/ปฏิเสธคำขอยืม)',
+            'บันทึกรับคืนพัสดุ คำนวณค่าปรับ และออกใบเสร็จ',
+            'สั่งซื้อพัสดุ/ครุภัณฑ์ (PO) และตรวจรับเข้าพัสดุ',
+            'จัดการข้อมูลอุปกรณ์, หมวดหมู่, สถานที่จัดเก็บ, บริษัทคู่ค้า',
+            'ดูและพิมพ์ทะเบียนครุภัณฑ์ และรายงานประจำเดือน'
+        ],
+        cannotAccess: [
+            'จัดการบัญชีผู้ใช้งาน (เพิ่ม/แก้ไข/ลบ/รีเซ็ตรหัสผ่าน)',
+            'ดูบันทึกการส่งแจ้งเตือนของระบบ (Audit Logs)',
+            'สิทธิ์ลบข้อมูลหลัก (สงวนสิทธิ์ให้เฉพาะ Admin เพื่อความปลอดภัย)'
+        ]
+    },
+    'admin': {
+        title: '👑 ผู้ดูแลระบบ (Admin)',
+        badgeClass: 'badge-danger',
+        summary: 'สิทธิ์สูงสุด เข้าถึงและควบคุมได้ทุกหน้าการทำงานของระบบ 100%',
+        canAccess: [
+            'เข้าถึงได้ทุกหน้าการทำงานของระบบแบบสมบูรณ์ (Full Access)',
+            'จัดการบัญชีผู้ใช้งาน (เพิ่ม, แก้ไข, ลบ, รีเซ็ตรหัสผ่าน)',
+            'แดชบอร์ดสถิติภาพรวมผู้บริหาร และทะเบียนครุภัณฑ์',
+            'บริการยืม-คืน, งานจัดซื้อ, งานรับเข้าพัสดุ ทั้งหมด',
+            'จัดการข้อมูลทั้งหมด พร้อมสิทธิ์ลบข้อมูลทุกตาราง',
+            'ตรวจสอบบันทึกการส่งแจ้งเตือนระบบ (LINE & Email Logs)'
+        ],
+        cannotAccess: []
+    }
+};
+
+function updateRolePermissions(role, mode) {
+    const box = document.getElementById(mode === 'add' ? 'addRolePermHint' : 'editRolePermHint');
+    if (!box) return;
+    const data = rolePermissionsData[role] || rolePermissionsData['student'];
+    
+    let html = `
+        <div class="perm-header">
+            <span>${data.title}</span>
+            <span class="badge ${data.badgeClass}">${role}</span>
+        </div>
+        <div class="perm-summary">${data.summary}</div>
+        <div class="perm-section-title allowed"><span>✅</span> สิทธิ์การเข้าถึงหน้าจอการทำงาน:</div>
+        <ul>
+            ${data.canAccess.map(item => `<li>${item}</li>`).join('')}
+        </ul>
+    `;
+    
+    if (data.cannotAccess && data.cannotAccess.length > 0) {
+        html += `
+            <div class="perm-section-title denied"><span>❌</span> หน้าที่ไม่มีสิทธิ์เข้าถึง:</div>
+            <ul class="denied-list">
+                ${data.cannotAccess.map(item => `<li>${item}</li>`).join('')}
+            </ul>
+        `;
+    }
+    
+    box.innerHTML = html;
+}
+
+function togglePermissionsGuide() {
+    const card = document.getElementById('permissionsGuideCard');
+    if (!card) return;
+    if (card.style.display === 'none' || card.style.display === '') {
+        card.style.display = 'block';
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+        card.style.display = 'none';
+    }
+}
+
 function openEditUserModal(id, idCode, firstName, lastName, phone, role, dept, lineId) {
     document.getElementById('editUserForm').action = `/admin/users/${id}/edit`;
     document.getElementById('editUserIdCode').value = idCode;
@@ -290,6 +511,7 @@ function openEditUserModal(id, idCode, firstName, lastName, phone, role, dept, l
     document.getElementById('editUserRole').value = role;
     document.getElementById('editUserDept').value = dept;
     document.getElementById('editUserLine').value = lineId;
+    updateRolePermissions(role, 'edit');
     openModal('editUserModal');
 }
 
@@ -298,5 +520,9 @@ function openDeleteUserModal(id, name) {
     document.getElementById('deleteUserNameText').textContent = name;
     openModal('deleteUserModal');
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateRolePermissions('student', 'add');
+});
 </script>
 {% endblock %}

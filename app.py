@@ -1,4 +1,6 @@
 import os
+import re
+from pathlib import Path
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import (
@@ -6,14 +8,20 @@ from flask import (
     session, jsonify, g, abort, Response
 )
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+from sqlalchemy.engine import URL
 
 from models import (
     db, User, Category, Location, FineRate, Supplier, SupplierProduct,
     Equipment, BorrowRequest, Borrowing, ReturnRecord, Fine,
     Maintenance, Notification, PurchaseOrder, PurchaseOrderItem,
-    GoodsReceipt, GoodsReceiptItem
+    GoodsReceipt, GoodsReceiptItem, IssueReport, SystemSetting
 )
 import notification_service
+
+# Local .env values are used for development; host-provided environment
+# variables take precedence.
+load_dotenv(Path(__file__).with_name('.env'))
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'svg'}
@@ -36,26 +44,39 @@ def create_app():
     MYSQL_DB = os.environ.get('MYSQL_DB', 'nonghan_borrow_db')
 
     db_path = os.path.join(os.path.dirname(__file__), 'inventory.db')
+    if os.environ.get('VERCEL') and not os.environ.get('DATABASE_URL') and DB_TYPE == 'sqlite':
+        import shutil
+        tmp_db = '/tmp/inventory.db'
+        if not os.path.exists(tmp_db) and os.path.exists(db_path):
+            try:
+                shutil.copy2(db_path, tmp_db)
+            except Exception:
+                pass
+        db_path = tmp_db
     if os.environ.get('DATABASE_URL'):
         app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
     elif DB_TYPE == 'mysql':
         import socket
         mysql_online = False
+        conn_timeout = 3.0 if MYSQL_HOST not in ('127.0.0.1', 'localhost') else 0.5
         try:
-            with socket.create_connection((MYSQL_HOST, MYSQL_PORT), timeout=0.5):
+            with socket.create_connection((MYSQL_HOST, MYSQL_PORT), timeout=conn_timeout):
                 mysql_online = True
         except OSError:
             mysql_online = False
 
         if mysql_online:
-            app.config['SQLALCHEMY_DATABASE_URI'] = (
-                f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}?charset=utf8mb4"
+            app.config['SQLALCHEMY_DATABASE_URI'] = URL.create(
+                'mysql+pymysql', username=MYSQL_USER, password=MYSQL_PASSWORD,
+                host=MYSQL_HOST, port=MYSQL_PORT, database=MYSQL_DB,
+                query={'charset': 'utf8mb4'}
             )
         else:
-            print("⚠️ ไม่สามารถเชื่อมต่อ MySQL (127.0.0.1:3306) ได้ -> สลับมาใช้ SQLite (inventory.db) อัตโนมัติ")
-            app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-    else:
+            raise RuntimeError(f"Cannot connect to MySQL at {MYSQL_HOST}:{MYSQL_PORT}; refusing to use SQLite")
+    elif DB_TYPE == 'sqlite':
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+    else:
+        raise ValueError("DB_TYPE must be 'mysql' or 'sqlite'")
 
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -64,10 +85,7 @@ def create_app():
     db.init_app(app)
 
     with app.app_context():
-        try:
-            db.create_all()
-        except Exception as e:
-            print("DB init notice:", e)
+        db.create_all()
 
     # Context processor for templates
     @app.context_processor
@@ -81,15 +99,18 @@ def create_app():
                     user_id=current_user.user_id, is_read=False
                 ).count()
         
-        # Pending requests count for staff/admin badge
+        # Pending requests & issues count for staff/admin badge
         pending_requests_count = 0
+        pending_issues_count = 0
         if current_user and current_user.role in ['admin', 'staff']:
             pending_requests_count = BorrowRequest.query.filter_by(status='pending').count()
+            pending_issues_count = IssueReport.query.filter_by(status='pending').count()
 
         return {
             'current_user': current_user,
             'unread_count': unread_count,
             'pending_requests_count': pending_requests_count,
+            'pending_issues_count': pending_issues_count,
             'now': datetime.utcnow()
         }
 
@@ -461,6 +482,124 @@ def create_app():
         return redirect(url_for('admin_requests'))
 
     # -------------------------------------------------------------
+    # AUTO-NUMBER GENERATORS (ระบบสร้างรหัสอัตโนมัติ)
+    # -------------------------------------------------------------
+    def generate_next_equipment_codes(count=1):
+        """
+        สร้างรหัสพัสดุ/ครุภัณฑ์ถัดไปอัตโนมัติ (Auto-number) ในรูปแบบ EQ-0001, EQ-0002...
+        ตรวจจับตัวเลขสูงสุดจากรหัสที่มีอยู่เดิมในระบบเพื่อรับประกันว่าไม่ซ้ำและเรียงลำดับต่อเนื่อง
+        """
+        all_codes = [eq.equipment_code for eq in Equipment.query.all() if eq.equipment_code]
+        max_num = 0
+        pattern = re.compile(r'(\d+)$')
+        for c in all_codes:
+            m = pattern.search(c.strip())
+            if m:
+                try:
+                    num = int(m.group(1))
+                    if num > max_num:
+                        max_num = num
+                except ValueError:
+                    pass
+
+        generated = []
+        curr = max_num + 1
+        existing_set = set(all_codes)
+        while len(generated) < count:
+            candidate = f"EQ-{curr:04d}"
+            if candidate not in existing_set:
+                generated.append(candidate)
+                existing_set.add(candidate)
+            curr += 1
+        return generated
+
+    def generate_next_equipment_code():
+        """สร้างรหัสพัสดุ/ครุภัณฑ์เดี่ยวถัดไป"""
+        return generate_next_equipment_codes(1)[0]
+
+    def generate_next_product_code():
+        """
+        สร้างรหัสสินค้าบริษัทคู่ค้าถัดไปอัตโนมัติ (Auto-number) ในรูปแบบ PRD-0001, PRD-0002...
+        """
+        all_codes = [p.product_code for p in SupplierProduct.query.all() if p.product_code]
+        max_num = 0
+        pattern = re.compile(r'(\d+)$')
+        for c in all_codes:
+            m = pattern.search(c.strip())
+            if m:
+                try:
+                    num = int(m.group(1))
+                    if num > max_num:
+                        max_num = num
+                except ValueError:
+                    pass
+
+        curr = max_num + 1
+        existing_set = set(all_codes)
+        while True:
+            candidate = f"PRD-{curr:04d}"
+            if candidate not in existing_set:
+                return candidate
+            curr += 1
+
+    def generate_next_po_number():
+        """
+        สร้างเลขที่ใบสั่งซื้ออัตโนมัติ ในรูปแบบ PO-YYYYMM-XXXX
+        """
+        now_str = datetime.utcnow().strftime('%Y%m')
+        prefix = f"PO-{now_str}-"
+        matching = PurchaseOrder.query.filter(PurchaseOrder.po_number.like(f'{prefix}%')).all()
+        max_num = 0
+        for po in matching:
+            suffix = po.po_number[len(prefix):]
+            if suffix.isdigit():
+                max_num = max(max_num, int(suffix))
+        curr = max(len(matching) + 1, max_num + 1)
+        while True:
+            candidate = f"{prefix}{curr:04d}"
+            if not PurchaseOrder.query.filter_by(po_number=candidate).first():
+                return candidate
+            curr += 1
+
+    def generate_next_receipt_number(receipt_type='purchase'):
+        """
+        สร้างเลขที่ใบรับเข้าอัตโนมัติ ในรูปแบบ GR-YYYYMM-XXXX, DR-YYYYMM-XXXX ฯลฯ
+        """
+        now_str = datetime.utcnow().strftime('%Y%m')
+        prefix = {'purchase': 'GR', 'direct': 'DR', 'donation': 'DN', 'transfer': 'TF'}.get(receipt_type, 'GR')
+        pattern = f"{prefix}-{now_str}-"
+        matching = GoodsReceipt.query.filter(GoodsReceipt.receipt_number.like(f'{pattern}%')).all()
+        max_num = 0
+        for gr in matching:
+            suffix = gr.receipt_number[len(pattern):]
+            if suffix.isdigit():
+                max_num = max(max_num, int(suffix))
+        curr = max(len(matching) + 1, max_num + 1)
+        while True:
+            candidate = f"{pattern}{curr:04d}"
+            if not GoodsReceipt.query.filter_by(receipt_number=candidate).first():
+                return candidate
+            curr += 1
+
+    @app.route('/api/equipment/next-code')
+    @roles_required('admin', 'staff')
+    def api_equipment_next_code():
+        """API ส่งคืนรหัสครุภัณฑ์ถัดไปสำหรับ UI Pre-fill"""
+        count = request.args.get('count', 1, type=int)
+        if count > 1:
+            codes = generate_next_equipment_codes(count)
+            return jsonify({'success': True, 'next_codes': codes, 'next_code': codes[0]})
+        code = generate_next_equipment_code()
+        return jsonify({'success': True, 'next_code': code})
+
+    @app.route('/api/products/next-code')
+    @roles_required('admin', 'staff')
+    def api_products_next_code():
+        """API ส่งคืนรหัสสินค้าคู่ค้าถัดไปสำหรับ UI Pre-fill"""
+        code = generate_next_product_code()
+        return jsonify({'success': True, 'next_code': code})
+
+    # -------------------------------------------------------------
     # REQUIREMENT 3 & 4: CRUD EQUIPMENT & IMAGE UPLOAD
     # -------------------------------------------------------------
     @app.route('/admin/equipment')
@@ -481,13 +620,15 @@ def create_app():
         equipment_list = query.order_by(Equipment.equipment_id.desc()).all()
         categories = Category.query.all()
         locations = Location.query.all()
+        next_equipment_code = generate_next_equipment_code()
         return render_template(
             'admin/equipment.html',
             equipment_list=equipment_list,
             categories=categories,
             locations=locations,
             search_query=search_query,
-            selected_cat=cat_id
+            selected_cat=cat_id,
+            next_equipment_code=next_equipment_code
         )
 
     @app.route('/admin/equipment/add', methods=['POST'])
@@ -501,11 +642,14 @@ def create_app():
         status = request.form.get('status', 'available')
         description = request.form.get('description', '').strip()
 
-        if not code or not name or not category_id or not location_id:
-            flash('กรุณากรอกรหัส ชื่อ หมวดหมู่ และสถานที่จัดเก็บให้ครบถ้วน', 'danger')
+        if not name or not category_id or not location_id:
+            flash('กรุณากรอกชื่อ หมวดหมู่ และสถานที่จัดเก็บให้ครบถ้วน', 'danger')
             return redirect(url_for('admin_equipment'))
 
-        if Equipment.query.filter_by(equipment_code=code).first():
+        # Auto-number fallback if empty
+        if not code:
+            code = generate_next_equipment_code()
+        elif Equipment.query.filter_by(equipment_code=code).first():
             flash(f'รหัสพัสดุ/ครุภัณฑ์ {code} มีอยู่ในระบบแล้ว', 'danger')
             return redirect(url_for('admin_equipment'))
 
@@ -540,7 +684,13 @@ def create_app():
     def new_equipment_page():
         categories = Category.query.order_by(Category.category_name.asc()).all()
         locations = Location.query.order_by(Location.location_name.asc()).all()
-        return render_template('admin/equipment_new.html', categories=categories, locations=locations)
+        next_equipment_code = generate_next_equipment_code()
+        return render_template(
+            'admin/equipment_new.html',
+            categories=categories,
+            locations=locations,
+            next_equipment_code=next_equipment_code
+        )
 
     @app.route('/admin/equipment/batch-add', methods=['POST'])
     @roles_required('admin', 'staff')
@@ -558,15 +708,41 @@ def create_app():
         added_count = 0
         duplicate_codes = []
 
-        for i in range(len(codes)):
-            code = codes[i].strip() if i < len(codes) else ''
+        existing_codes_in_batch = set(eq.equipment_code for eq in Equipment.query.all() if eq.equipment_code)
+        pattern = re.compile(r'(\d+)$')
+
+        def get_batch_next_code():
+            max_num = 0
+            for c in existing_codes_in_batch:
+                m = pattern.search(c.strip())
+                if m:
+                    try:
+                        n = int(m.group(1))
+                        if n > max_num:
+                            max_num = n
+                    except ValueError:
+                        pass
+            curr = max_num + 1
+            while True:
+                candidate = f"EQ-{curr:04d}"
+                if candidate not in existing_codes_in_batch:
+                    existing_codes_in_batch.add(candidate)
+                    return candidate
+                curr += 1
+
+        for i in range(len(names)):
             name = names[i].strip() if i < len(names) else ''
-            if not code or not name:
+            if not name:
                 continue
 
-            if Equipment.query.filter_by(equipment_code=code).first():
+            code = codes[i].strip() if i < len(codes) else ''
+            if not code:
+                code = get_batch_next_code()
+            elif code in existing_codes_in_batch:
                 duplicate_codes.append(code)
                 continue
+            else:
+                existing_codes_in_batch.add(code)
 
             try:
                 cat_id = int(category_ids[i]) if i < len(category_ids) and category_ids[i] else 1
@@ -617,7 +793,7 @@ def create_app():
             if duplicate_codes:
                 flash(f'ไม่สามารถบันทึกได้ เนื่องจากรหัสพัสดุซ้ำในระบบ: {", ".join(duplicate_codes)}', 'danger')
             else:
-                flash('ไม่พบข้อมูลที่จะบันทึก กรุณากรอกรหัสและชื่อรายการอย่างน้อย 1 รายการ', 'warning')
+                flash('ไม่พบข้อมูลที่จะบันทึก กรุณากรอกชื่อรายการอย่างน้อย 1 รายการ', 'warning')
 
         return redirect(url_for('admin_equipment'))
 
@@ -1143,6 +1319,118 @@ def create_app():
             damaged_count=damaged_count, total_qty=total_qty, available_qty=available_qty
         )
 
+    @app.route('/admin/reports/borrow-return')
+    @roles_required('admin', 'staff')
+    def report_borrow_return():
+        """
+        รายงานการยืมและการคืนวัสดุ/ครุภัณฑ์
+        สามารถระบุสาขาวิชา/แผนกวิชา และระบุช่วงวัน/เดือน/ปี ได้ ทั้งรายงานการยืมและรายงานการคืน
+        """
+        report_type = request.args.get('type', 'borrow').strip()  # 'borrow', 'return', 'all'
+        selected_dept = request.args.get('department', '').strip()
+        start_date_str = request.args.get('start_date', '').strip()
+        end_date_str = request.args.get('end_date', '').strip()
+
+        now = datetime.utcnow()
+        if not start_date_str:
+            start_date_str = now.replace(day=1).strftime('%Y-%m-%d')
+        if not end_date_str:
+            end_date_str = now.strftime('%Y-%m-%d')
+
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        except ValueError:
+            start_date = now.replace(day=1)
+            start_date_str = start_date.strftime('%Y-%m-%d')
+
+        try:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+        except ValueError:
+            end_date = now.replace(hour=23, minute=59, second=59)
+            end_date_str = now.strftime('%Y-%m-%d')
+
+        # Collect available departments from DB + default college departments
+        default_depts = [
+            "แผนกวิชาช่างอิเล็กทรอนิกส์",
+            "แผนกวิชาช่างยนต์",
+            "แผนกวิชาช่างไฟฟ้ากำลัง",
+            "แผนกวิชาช่างกลโรงงาน",
+            "แผนกวิชาคอมพิวเตอร์ธุรกิจ",
+            "แผนกวิชาการบัญชี",
+            "แผนกวิชาการตลาด",
+            "งานพัสดุและสินทรัพย์"
+        ]
+        db_depts = [d[0] for d in db.session.query(User.department).filter(User.department.isnot(None), User.department != '').distinct().all() if d[0]]
+        all_departments = sorted(list(set(default_depts + db_depts)))
+
+        borrow_items = []
+        return_items = []
+
+        # Query Borrowings
+        if report_type in ['borrow', 'all']:
+            b_query = Borrowing.query.join(User).join(Equipment).filter(
+                Borrowing.borrow_date >= start_date,
+                Borrowing.borrow_date <= end_date
+            )
+            if selected_dept:
+                b_query = b_query.filter(User.department.ilike(f'%{selected_dept}%'))
+            borrow_items = b_query.order_by(Borrowing.borrow_date.desc()).all()
+
+        # Query Returns
+        if report_type in ['return', 'all']:
+            r_query = ReturnRecord.query.join(Borrowing, ReturnRecord.borrow_id == Borrowing.borrow_id)\
+                                        .join(User, Borrowing.user_id == User.user_id)\
+                                        .join(Equipment, Borrowing.equipment_id == Equipment.equipment_id)\
+                                        .filter(
+                                            ReturnRecord.return_date >= start_date,
+                                            ReturnRecord.return_date <= end_date
+                                        )
+            if selected_dept:
+                r_query = r_query.filter(User.department.ilike(f'%{selected_dept}%'))
+            return_items = r_query.order_by(ReturnRecord.return_date.desc()).all()
+
+        # Summary statistics
+        total_borrow_count = len(borrow_items)
+        total_borrow_qty = sum(b.quantity for b in borrow_items)
+        active_borrow_count = sum(1 for b in borrow_items if b.status in ['borrowed', 'overdue'])
+        overdue_borrow_count = sum(1 for b in borrow_items if b.is_overdue)
+
+        total_return_count = len(return_items)
+        total_return_qty = sum(r.borrowing.quantity for r in return_items if r.borrowing)
+        normal_return_count = sum(1 for r in return_items if r.condition_status == 'normal')
+        damaged_return_count = sum(1 for r in return_items if r.condition_status in ['damaged', 'lost'])
+        total_fines = sum(r.fine.total_fine for r in return_items if r.fine)
+
+        # Thai formatted dates for display
+        thai_months = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+        s_parts = start_date_str.split('-')
+        e_parts = end_date_str.split('-')
+        start_date_th = f"{int(s_parts[2])} {thai_months[int(s_parts[1])-1]} {int(s_parts[0]) + 543}"
+        end_date_th = f"{int(e_parts[2])} {thai_months[int(e_parts[1])-1]} {int(e_parts[0]) + 543}"
+
+        return render_template(
+            'admin/report_borrow_return.html',
+            report_type=report_type,
+            selected_dept=selected_dept,
+            start_date=start_date_str,
+            end_date=end_date_str,
+            start_date_th=start_date_th,
+            end_date_th=end_date_th,
+            all_departments=all_departments,
+            borrow_items=borrow_items,
+            return_items=return_items,
+            total_borrow_count=total_borrow_count,
+            total_borrow_qty=total_borrow_qty,
+            active_borrow_count=active_borrow_count,
+            overdue_borrow_count=overdue_borrow_count,
+            total_return_count=total_return_count,
+            total_return_qty=total_return_qty,
+            normal_return_count=normal_return_count,
+            damaged_return_count=damaged_return_count,
+            total_fines=total_fines,
+            today_date=f"{now.day} {thai_months[now.month-1]} {now.year + 543}"
+        )
+
     # -------------------------------------------------------------
     # NOTIFICATIONS & DISPATCH LOG
     # -------------------------------------------------------------
@@ -1170,6 +1458,192 @@ def create_app():
     def notification_logs():
         logs = notification_service.dispatch_logs
         return render_template('admin/notification_logs.html', logs=logs)
+
+    def get_issue_contact_info():
+        """ดึงข้อมูลติดต่อด่วนสำหรับแสดงในหน้ารายงานปัญหา (สามารถแก้ไขได้โดยเจ้าหน้าที่/Admin)"""
+        return {
+            'title': SystemSetting.get('contact_title', 'ติดต่อด่วนงานพัสดุ'),
+            'location': SystemSetting.get('contact_location', 'อาคาร 1 ชั้น 1 งานพัสดุ วิทยาลัยการอาชีพหนองหาน'),
+            'hours': SystemSetting.get('contact_hours', 'วันจันทร์ - ศุกร์ (08:30 - 16:30 น.)'),
+            'phone': SystemSetting.get('contact_phone', '042-xxxxxx หรือ โทรศัพท์ภายใน 104, 105'),
+            'line': SystemSetting.get('contact_line', '@nonghan_parcel (ID Line: nonghan104)'),
+            'note': SystemSetting.get('contact_note', 'กรณีอุปกรณ์ชำรุดฉุกเฉินในการเรียนการสอน หรือพบเหตุขัดข้องเร่งด่วน สามารถติดต่อห้องพัสดุได้ทันที')
+        }
+
+    # -------------------------------------------------------------
+    # USER ISSUE REPORTING & TICKETS (ระบบรายงานปัญหาการใช้งาน)
+    # -------------------------------------------------------------
+    @app.route('/issues', methods=['GET', 'POST'])
+    @login_required
+    def user_issues():
+        """หน้าสำหรับผู้ใช้งานยื่นรายงานปัญหา และดูประวัติปัญหาที่ตนเองแจ้ง"""
+        user = User.query.get(session['user_id'])
+        if request.method == 'POST':
+            title = request.form.get('title', '').strip()
+            category = request.form.get('category', 'equipment').strip()
+            equipment_id = request.form.get('equipment_id', type=int)
+            description = request.form.get('description', '').strip()
+            contact_info = request.form.get('contact_info', '').strip()
+
+            if not title or not description:
+                flash('กรุณากรอกหัวข้อปัญหาและรายละเอียดปัญหาให้ครบถ้วน', 'danger')
+                return redirect(url_for('user_issues'))
+
+            # Handle Image Upload if attached
+            image_path = None
+            if 'image' in request.files:
+                file = request.files['image']
+                if file and file.filename != '' and allowed_file(file.filename):
+                    filename = secure_filename(f"issue_{int(datetime.utcnow().timestamp())}_{file.filename}")
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                    image_path = f"uploads/{filename}"
+
+            report = IssueReport(
+                user_id=user.user_id,
+                equipment_id=equipment_id if equipment_id and equipment_id > 0 else None,
+                title=title,
+                category=category,
+                description=description,
+                contact_info=contact_info or user.phone_number or '',
+                image_path=image_path,
+                status='pending'
+            )
+            db.session.add(report)
+            db.session.commit()
+
+            # Create an in-app notification for the user to confirm receipt
+            confirm_notif = Notification(
+                user_id=user.user_id,
+                title='บันทึกการรายงานปัญหาเรียบร้อยแล้ว',
+                message=f'ระบบได้รับเรื่อง "{title}" ของคุณเรียบร้อยแล้ว เจ้าหน้าที่จะดำเนินการตรวจสอบโดยเร็ว',
+                type='info',
+                is_read=False
+            )
+            db.session.add(confirm_notif)
+            db.session.commit()
+
+            flash('ส่งรายงานปัญหาเรียบร้อยแล้ว เจ้าหน้าที่จะดำเนินการตรวจสอบโดยเร็วที่สุด', 'success')
+            return redirect(url_for('user_issues'))
+
+        # GET request
+        my_issues = IssueReport.query.filter_by(user_id=user.user_id).order_by(IssueReport.created_at.desc()).all()
+        equipment_list = Equipment.query.order_by(Equipment.name.asc()).all()
+
+        return render_template(
+            'issues.html',
+            my_issues=my_issues,
+            equipment_list=equipment_list,
+            user=user,
+            contact_info=get_issue_contact_info()
+        )
+
+    @app.route('/admin/issues')
+    @roles_required('admin', 'staff')
+    def admin_issues():
+        """หน้าสำหรับเจ้าหน้าที่/Admin การตอบกลับปัญหาที่ผู้ใช้งานรายงานมา"""
+        status_filter = request.args.get('status', 'all').strip()
+        cat_filter = request.args.get('category', 'all').strip()
+        search_q = request.args.get('q', '').strip()
+
+        query = IssueReport.query.join(User, IssueReport.user_id == User.user_id)
+
+        if status_filter != 'all':
+            query = query.filter(IssueReport.status == status_filter)
+        if cat_filter != 'all':
+            query = query.filter(IssueReport.category == cat_filter)
+        if search_q:
+            query = query.filter(
+                (IssueReport.title.ilike(f'%{search_q}%')) |
+                (IssueReport.description.ilike(f'%{search_q}%')) |
+                (User.first_name.ilike(f'%{search_q}%')) |
+                (User.last_name.ilike(f'%{search_q}%')) |
+                (User.student_or_citizen_id.ilike(f'%{search_q}%'))
+            )
+
+        issues = query.order_by(IssueReport.created_at.desc()).all()
+
+        # Stats
+        total_issues = IssueReport.query.count()
+        pending_count = IssueReport.query.filter_by(status='pending').count()
+        in_progress_count = IssueReport.query.filter_by(status='in_progress').count()
+        resolved_count = IssueReport.query.filter_by(status='resolved').count()
+
+        return render_template(
+            'admin/issues.html',
+            issues=issues,
+            status_filter=status_filter,
+            cat_filter=cat_filter,
+            search_q=search_q,
+            total_issues=total_issues,
+            pending_count=pending_count,
+            in_progress_count=in_progress_count,
+            resolved_count=resolved_count,
+            contact_info=get_issue_contact_info()
+        )
+
+    @app.route('/admin/issues/contact-info', methods=['POST'])
+    @roles_required('admin', 'staff')
+    def admin_issues_update_contact():
+        """อัปเดตข้อมูลการติดต่อด่วนที่แสดงให้ผู้ใช้งานเห็นในหน้ารายงานปัญหา"""
+        SystemSetting.set('contact_title', request.form.get('contact_title', '').strip(), 'หัวข้อติดต่อด่วน')
+        SystemSetting.set('contact_location', request.form.get('contact_location', '').strip(), 'สถานที่ตั้งห้องพัสดุ')
+        SystemSetting.set('contact_hours', request.form.get('contact_hours', '').strip(), 'เวลาให้บริการ')
+        SystemSetting.set('contact_phone', request.form.get('contact_phone', '').strip(), 'เบอร์โทรศัพท์/โทรภายใน')
+        SystemSetting.set('contact_line', request.form.get('contact_line', '').strip(), 'LINE / ช่องทางติดต่ออื่น')
+        SystemSetting.set('contact_note', request.form.get('contact_note', '').strip(), 'หมายเหตุเพิ่มเติม')
+        db.session.commit()
+        flash('อัปเดตข้อมูลการติดต่อที่แสดงให้ผู้ใช้งานเห็นเรียบร้อยแล้ว', 'success')
+        return redirect(url_for('admin_issues'))
+
+    @app.route('/admin/issues/<int:report_id>/update', methods=['POST'])
+    @roles_required('admin', 'staff')
+    def admin_issue_update(report_id):
+        """อัปเดตสถานะปัญหา และตอบกลับไปยังผู้แจ้ง"""
+        issue = IssueReport.query.get_or_404(report_id)
+        new_status = request.form.get('status', issue.status).strip()
+        admin_response = request.form.get('admin_response', '').strip()
+        staff_user = User.query.get(session['user_id'])
+
+        issue.status = new_status
+        issue.admin_response = admin_response
+        if new_status in ['resolved', 'closed']:
+            issue.resolved_by = staff_user.user_id
+
+        db.session.commit()
+
+        # Notify the reporter about the update
+        status_labels = {
+            'pending': 'รอดำเนินการ',
+            'in_progress': 'กำลังตรวจสอบ',
+            'resolved': 'แก้ไขแล้ว',
+            'closed': 'ปิดงาน'
+        }
+        notif_msg = f'ปัญหาเรื่อง "{issue.title}" ได้รับการอัปเดตสถานะเป็น "{status_labels.get(new_status, new_status)}"'
+        if admin_response:
+            notif_msg += f'\nข้อความจากเจ้าหน้าที่: {admin_response}'
+
+        reporter_notif = Notification(
+            user_id=issue.user_id,
+            title=f'อัปเดตรายงานปัญหา: {issue.title}',
+            message=notif_msg,
+            type='approval' if new_status == 'resolved' else 'info',
+            is_read=False
+        )
+        db.session.add(reporter_notif)
+        db.session.commit()
+
+        flash(f'อัปเดตสถานะรายงานปัญหา #{issue.report_id} เรียบร้อยแล้ว พร้อมส่งการแจ้งเตือนไปยังผู้แจ้ง', 'success')
+        return redirect(url_for('admin_issues'))
+
+    @app.route('/admin/issues/<int:report_id>/delete', methods=['POST'])
+    @roles_required('admin')
+    def admin_issue_delete(report_id):
+        """ลบรายการปัญหา (เฉพาะ Admin)"""
+        issue = IssueReport.query.get_or_404(report_id)
+        db.session.delete(issue)
+        db.session.commit()
+        flash(f'ลบรายงานปัญหา #{report_id} สำเร็จ', 'info')
+        return redirect(url_for('admin_issues'))
 
     # -------------------------------------------------------------
     # REQUIREMENT: PURCHASE ORDERS & SUPPLIERS MANAGEMENT (การสั่งซื้อพัสดุและครุภัณฑ์)
@@ -1227,14 +1701,12 @@ def create_app():
 
             # Auto-generate PO number if not provided or empty
             if not po_number:
-                now_str = datetime.utcnow().strftime('%Y%m')
-                count_this_month = PurchaseOrder.query.filter(PurchaseOrder.po_number.like(f'PO-{now_str}-%')).count() + 1
-                po_number = f"PO-{now_str}-{count_this_month:04d}"
+                po_number = generate_next_po_number()
 
             # Check duplicate PO
             existing_po = PurchaseOrder.query.filter_by(po_number=po_number).first()
             if existing_po:
-                po_number = f"{po_number}-{int(datetime.utcnow().timestamp()) % 1000}"
+                po_number = generate_next_po_number()
 
             order_date = datetime.utcnow()
             if order_date_str:
@@ -1340,10 +1812,8 @@ def create_app():
             if reorder_po and not selected_supplier_id:
                 selected_supplier_id = reorder_po.supplier_id
 
-        # Generate recommended PO number
-        now_str = datetime.utcnow().strftime('%Y%m')
-        count_this_month = PurchaseOrder.query.filter(PurchaseOrder.po_number.like(f'PO-{now_str}-%')).count() + 1
-        suggested_po_number = f"PO-{now_str}-{count_this_month:04d}"
+        # Generate recommended PO number (Auto-number)
+        suggested_po_number = generate_next_po_number()
 
         # Equipment list for system search
         all_equipment = Equipment.query.order_by(Equipment.name.asc()).all()
@@ -1423,7 +1893,14 @@ def create_app():
             )
         suppliers = query.order_by(Supplier.company_name.asc()).all()
         categories = Category.query.all()
-        return render_template('admin/suppliers.html', suppliers=suppliers, categories=categories, search_query=search_query)
+        next_product_code = generate_next_product_code()
+        return render_template(
+            'admin/suppliers.html',
+            suppliers=suppliers,
+            categories=categories,
+            search_query=search_query,
+            next_product_code=next_product_code
+        )
 
     @app.route('/admin/suppliers/add', methods=['POST'])
     @roles_required('admin', 'staff')
@@ -1497,6 +1974,10 @@ def create_app():
             flash('กรุณาระบุชื่อสินค้า', 'danger')
             return redirect(url_for('suppliers_list'))
 
+        # Auto-number fallback if empty
+        if not product_code:
+            product_code = generate_next_product_code()
+
         prod = SupplierProduct(
             supplier_id=sup.supplier_id,
             equipment_id=equipment_id if equipment_id else None,
@@ -1511,7 +1992,11 @@ def create_app():
         db.session.commit()
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': True, 'product': prod.to_dict()})
+            return jsonify({
+                'success': True,
+                'product': prod.to_dict(),
+                'next_product_code': generate_next_product_code()
+            })
 
         flash(f'เพิ่มสินค้า "{product_name}" ในแค็ตตาล็อกของ {sup.company_name} เรียบร้อยแล้ว', 'success')
         return redirect(request.referrer or url_for('suppliers_list'))
@@ -1660,12 +2145,7 @@ def create_app():
                 received_date = datetime.utcnow()
 
             # Auto-generate receipt number
-            now_str = datetime.utcnow().strftime('%Y%m')
-            prefix = {'purchase': 'GR', 'direct': 'DR', 'donation': 'DN', 'transfer': 'TF'}.get(receipt_type, 'GR')
-            count = GoodsReceipt.query.filter(
-                GoodsReceipt.receipt_number.like(f'{prefix}-{now_str}-%')
-            ).count() + 1
-            receipt_number = f"{prefix}-{now_str}-{count:04d}"
+            receipt_number = generate_next_receipt_number(receipt_type)
 
             staff_user = User.query.get(session['user_id'])
 
@@ -1786,11 +2266,7 @@ def create_app():
         staff_user = User.query.get(session['user_id'])
 
         # Auto-generate receipt number
-        now_str = datetime.utcnow().strftime('%Y%m')
-        count = GoodsReceipt.query.filter(
-            GoodsReceipt.receipt_number.like(f'GR-{now_str}-%')
-        ).count() + 1
-        receipt_number = f"GR-{now_str}-{count:04d}"
+        receipt_number = generate_next_receipt_number('purchase')
 
         receipt = GoodsReceipt(
             receipt_number=receipt_number,
@@ -1920,13 +2396,15 @@ def create_app():
                 category_id = None
                 location_id = None
 
-        if not code or not name:
-            return jsonify({'success': False, 'message': 'กรุณาระบุรหัสและชื่อรายการ'}), 400
+        if not name:
+            return jsonify({'success': False, 'message': 'กรุณาระบุชื่อรายการ'}), 400
 
         if not category_id or not location_id:
             return jsonify({'success': False, 'message': 'กรุณาเลือกหมวดหมู่และสถานที่จัดเก็บ'}), 400
 
-        if Equipment.query.filter_by(equipment_code=code).first():
+        if not code:
+            code = generate_next_equipment_code()
+        elif Equipment.query.filter_by(equipment_code=code).first():
             return jsonify({'success': False, 'message': f'รหัสพัสดุ/ครุภัณฑ์ {code} มีอยู่ในระบบแล้ว'}), 400
 
         eq = Equipment(

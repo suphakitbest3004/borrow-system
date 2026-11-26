@@ -100,7 +100,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Headings with Proper Thai Hierarchy & Breathing Room */
@@ -1191,6 +1191,7 @@ code, .font-mono, [data-mono] {
   }
 }
 
+
 .page-header {
   display: flex;
   flex-wrap: wrap;
@@ -1201,6 +1202,7 @@ code, .font-mono, [data-mono] {
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
 }
+
 
 .page-title {
   font-size: clamp(1.25rem, 2.2vw, 1.55rem);
@@ -1595,11 +1597,56 @@ code, .font-mono, [data-mono] {
   }
 }
 
-.form-text {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  margin-top: 0.4rem;
-  line-height: 1.5;
+/* ==========================================================================
+   PLACEHOLDER & HINT TEXT STYLING (ทำให้จางลงมาก สบายตา นุ่มนวล)
+   ========================================================================== */
+::placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.35 !important;
+  font-weight: 300 !important;
+  -webkit-text-fill-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+::-webkit-input-placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.35 !important;
+  font-weight: 300 !important;
+  -webkit-text-fill-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+:-ms-input-placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.35 !important;
+  font-weight: 300 !important;
+}
+
+::-moz-placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.35 !important;
+  font-weight: 300 !important;
+}
+
+input::placeholder,
+textarea::placeholder,
+select::placeholder,
+.form-control::placeholder,
+.form-select::placeholder {
+  color: #94a3b8 !important;
+  opacity: 0.35 !important;
+  font-weight: 300 !important;
+  -webkit-text-fill-color: rgba(148, 163, 184, 0.45) !important;
+}
+
+.form-text,
+.form-hint,
+small.form-text,
+.text-muted.form-text {
+  font-size: 0.76rem !important;
+  color: #94a3b8 !important;
+  margin-top: 0.3rem !important;
+  line-height: 1.4 !important;
+  font-weight: 400 !important;
+  opacity: 0.75 !important;
 }
 
 /* Image Upload Preview Box */
@@ -1797,6 +1844,73 @@ code, .font-mono, [data-mono] {
   justify-content: flex-end;
   gap: 0.85rem;
   flex-shrink: 0;
+}
+
+/* ==========================================================================
+   ROLE PERMISSION HINT BOX (กล่องแสดงสิทธิ์ตามประเภทการใช้งาน)
+   ========================================================================== */
+
+.role-permission-box {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  transition: var(--transition-fast);
+}
+
+.role-permission-box .perm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.role-permission-box .perm-summary {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.role-permission-box .perm-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  margin-bottom: 0.25rem;
+}
+
+.role-permission-box .perm-section-title.allowed {
+  color: var(--success);
+}
+
+.role-permission-box .perm-section-title.denied {
+  color: var(--danger);
+}
+
+.role-permission-box ul {
+  padding-left: 1.15rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.role-permission-box ul li {
+  color: var(--text-main);
+  font-size: 0.8rem;
+}
+
+.role-permission-box ul.denied-list li {
+  color: var(--text-muted);
 }
 
 /* ==========================================================================

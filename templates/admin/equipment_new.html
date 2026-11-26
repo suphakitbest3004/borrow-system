@@ -4,8 +4,8 @@
 
 {% block content %}
 <form action="{{ url_for('batch_add_equipment') }}" method="POST" enctype="multipart/form-data" id="batchEquipmentForm">
-    <!-- Page Header with Save All Buttons -->
-    <div class="page-header" style="position: sticky; top: 72px; z-index: 40; background: rgba(248, 250, 252, 0.95); backdrop-filter: blur(8px); padding-top: 1rem;">
+    <!-- Page Header with Action Buttons (Static Header) -->
+    <div class="page-header">
         <div>
             <h1 class="page-title">
                 <span>➕</span> หน้าเพิ่มวัสดุและครุภัณฑ์
@@ -73,8 +73,9 @@
                     <div>
                         <div class="form-row">
                             <div class="form-group" style="flex: 1;">
-                                <label class="form-label">รหัสพัสดุ / ครุภัณฑ์ <span style="color: var(--danger);">*</span></label>
-                                <input type="text" name="equipment_code[]" class="form-control" placeholder="เช่น EQ-EL-015 หรือบาร์โค้ด" required>
+                                <label class="form-label">รหัสพัสดุ / ครุภัณฑ์ <span class="badge badge-info" style="font-size: 0.72rem; vertical-align: middle; margin-left: 4px;">Auto Number</span> <span style="color: var(--danger);">*</span></label>
+                                <input type="text" name="equipment_code[]" class="form-control" value="{{ next_equipment_code }}" placeholder="เช่น EQ-0001 (ระบบออกให้อัตโนมัติ)" required style="font-weight: 600;">
+                                <span class="form-text">✨ รหัสเริ่มต้น (Auto)</span>
                             </div>
                             <div class="form-group" style="flex: 2;">
                                 <label class="form-label">ชื่อวัสดุ / ครุภัณฑ์ <span style="color: var(--danger);">*</span></label>
@@ -182,6 +183,23 @@ function updateRowBadges() {
     }
 }
 
+function getNextRowCode() {
+    const codeInputs = document.querySelectorAll('input[name="equipment_code[]"]');
+    let highestNum = 0;
+    codeInputs.forEach(input => {
+        const val = input.value.trim();
+        const match = val.match(/(\d+)$/);
+        if (match) {
+            const n = parseInt(match[1], 10);
+            if (n > highestNum) highestNum = n;
+        }
+    });
+    if (highestNum > 0) {
+        return 'EQ-' + String(highestNum + 1).padStart(4, '0');
+    }
+    return '';
+}
+
 function addNewEquipmentRow() {
     const container = document.getElementById('equipmentRowsContainer');
     const newIndex = rowCount;
@@ -194,6 +212,13 @@ function addNewEquipmentRow() {
     // Reset values in new row
     newCard.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
     newCard.querySelectorAll('input[type="number"]').forEach(input => input.value = '1');
+
+    // Auto-number for newly added row
+    const nextCode = getNextRowCode();
+    const codeInput = newCard.querySelector('input[name="equipment_code[]"]');
+    if (codeInput && nextCode) {
+        codeInput.value = nextCode;
+    }
     
     // Update file input and preview
     const fileInput = newCard.querySelector('input[type="file"]');

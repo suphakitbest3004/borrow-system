@@ -509,3 +509,92 @@ class Notification(db.Model):
             'info': 'bell'
         }
         return icons.get(self.type, 'bell')
+
+
+class IssueReport(db.Model):
+    __tablename__ = 'issue_reports'
+    report_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.equipment_id'), nullable=True)
+    title = db.Column(db.String(150), nullable=False)
+    category = db.Column(db.String(50), default='equipment', nullable=False)  # 'equipment', 'system', 'borrow', 'other'
+    description = db.Column(db.Text, nullable=False)
+    image_path = db.Column(db.String(255), nullable=True)
+    contact_info = db.Column(db.String(100), nullable=True)
+    status = db.Column(db.String(20), default='pending', nullable=False)  # 'pending', 'in_progress', 'resolved', 'closed'
+    admin_response = db.Column(db.Text, nullable=True)
+    resolved_by = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = db.relationship('User', foreign_keys=[user_id], backref='issue_reports')
+    resolver = db.relationship('User', foreign_keys=[resolved_by], backref='resolved_issues')
+    equipment = db.relationship('Equipment', backref='issue_reports')
+
+    @property
+    def status_display(self):
+        mapping = {
+            'pending': 'รอดำเนินการ',
+            'in_progress': 'กำลังตรวจสอบ',
+            'resolved': 'แก้ไขแล้ว',
+            'closed': 'ปิดงาน'
+        }
+        return mapping.get(self.status, self.status)
+
+    @property
+    def status_badge_class(self):
+        mapping = {
+            'pending': 'badge-warning',
+            'in_progress': 'badge-info',
+            'resolved': 'badge-success',
+            'closed': 'badge-secondary'
+        }
+        return mapping.get(self.status, 'badge-secondary')
+
+    @property
+    def category_display(self):
+        mapping = {
+            'equipment': '🛠️ อุปกรณ์ชำรุด/มีปัญหา',
+            'system': '💻 ปัญหาการใช้งานระบบ',
+            'borrow': '📋 ปัญหาการยืม-คืน',
+            'other': '💡 อื่นๆ / ข้อเสนอแนะ'
+        }
+        return mapping.get(self.category, self.category)
+
+    @property
+    def category_badge_class(self):
+        mapping = {
+            'equipment': 'badge-danger',
+            'system': 'badge-warning',
+            'borrow': 'badge-primary',
+            'other': 'badge-info'
+        }
+        return mapping.get(self.category, 'badge-secondary')
+
+
+class SystemSetting(db.Model):
+    __tablename__ = 'system_settings'
+    setting_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.Text, nullable=True)
+    description = db.Column(db.String(255), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @classmethod
+    def get(cls, key, default=''):
+        item = cls.query.filter_by(key=key).first()
+        return item.value if (item and item.value is not None) else default
+
+    @classmethod
+    def set(cls, key, value, description=None):
+        item = cls.query.filter_by(key=key).first()
+        if not item:
+            item = cls(key=key, value=value, description=description)
+            db.session.add(item)
+        else:
+            item.value = value
+            if description:
+                item.description = description
+        return item
+
+

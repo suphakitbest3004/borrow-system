@@ -349,13 +349,27 @@ function validateForm() {
 /* ==================== Create Equipment Modal ==================== */
 function openCreateEquipmentModal() {
     document.getElementById('createEquipmentModal').style.display = 'flex';
-    document.getElementById('newEqCode').value = '';
+    document.getElementById('newEqCode').value = 'กำลังออกรหัส...';
     document.getElementById('newEqName').value = '';
     document.getElementById('newEqCategory').value = '';
     document.getElementById('newEqLocation').value = '';
     document.getElementById('newEqDescription').value = '';
     hideModalAlert();
-    setTimeout(() => document.getElementById('newEqCode').focus(), 100);
+
+    fetch('{{ url_for("api_equipment_next_code") }}')
+        .then(res => res.json())
+        .then(data => {
+            if (data.next_code) {
+                document.getElementById('newEqCode').value = data.next_code;
+            } else {
+                document.getElementById('newEqCode').value = '';
+            }
+        })
+        .catch(() => {
+            document.getElementById('newEqCode').value = '';
+        });
+
+    setTimeout(() => document.getElementById('newEqName').focus(), 100);
 }
 
 function closeCreateEquipmentModal() {

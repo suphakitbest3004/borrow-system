@@ -277,7 +277,7 @@
                             <input type="text" name="product_name" id="newProdName" class="form-control" placeholder="ชื่อสินค้า/พัสดุ *" required>
                         </div>
                         <div>
-                            <input type="text" name="product_code" id="newProdCode" class="form-control" placeholder="รหัสสินค้า/รุ่น">
+                            <input type="text" name="product_code" id="newProdCode" class="form-control" value="{{ next_product_code }}" placeholder="รหัสสินค้า เช่น PRD-0001 (Auto)">
                         </div>
                     </div>
                     <div class="form-row" style="margin-bottom: 0.65rem;">
@@ -337,6 +337,17 @@ function openProductsModal(id, name) {
     document.getElementById('prodSupplierId').value = id;
     document.getElementById('productsModalTitle').innerHTML = `<span>📦</span> แค็ตตาล็อกสินค้า`;
     document.getElementById('productsModalSubtitle').textContent = name;
+    
+    // Auto-refresh product code
+    fetch('/api/products/next-code')
+        .then(res => res.json())
+        .then(data => {
+            if (data.next_code) {
+                document.getElementById('newProdCode').value = data.next_code;
+            }
+        })
+        .catch(() => {});
+
     openModal('productsModal');
     loadProducts(id);
 }
@@ -424,6 +435,9 @@ function submitNewProduct(e) {
         if (data.success) {
             form.reset();
             document.getElementById('newProdUnit').value = 'ชิ้น';
+            if (data.next_product_code) {
+                document.getElementById('newProdCode').value = data.next_product_code;
+            }
             loadProducts(activeSupplierId);
             alert('เพิ่มสินค้าลงในแค็ตตาล็อกเรียบร้อยแล้ว');
         } else {

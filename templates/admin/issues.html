@@ -1,0 +1,577 @@
+{% extends "base.html" %}
+
+{% block title %}การตอบกลับปัญหาที่ผู้ใช้งานรายงานมา - วิทยาลัยการอาชีพหนองหาน{% endblock %}
+
+{% block page_pill %}การตอบกลับปัญหาที่ผู้ใช้งานรายงานมา{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">
+            <span>💬</span> การตอบกลับปัญหาที่ผู้ใช้งานรายงานมา
+        </h1>
+        <p class="page-subtitle">ตรวจสอบปัญหาและข้อเสนอแนะที่นักเรียน อาจารย์ และเจ้าหน้าที่แจ้งเข้ามา พร้อมตอบกลับผลการตรวจสอบ อัปเดตสถานะ และจัดการข้อมูลติดต่อ</p>
+    </div>
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button type="button" class="btn btn-primary btn-sm" onclick="openModal('contactModal')">
+            <span>⚙️</span> เปลี่ยนแปลงข้อมูลการติดต่อ
+        </button>
+        <a href="{{ url_for('user_issues') }}" class="btn btn-secondary btn-sm" target="_blank" title="ไปที่หน้าแบบฟอร์มแจ้งปัญหา (มุมมองผู้ใช้)">
+            <span>👁️</span> ดูหน้าจอผู้ใช้งาน
+        </a>
+    </div>
+</div>
+
+<!-- Current Contact Info Banner for Users -->
+<div class="card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--accent-blue); background: #f8fafc;">
+    <div class="card-body" style="padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
+            <div style="font-size: 1.8rem; line-height: 1;">📞</div>
+            <div>
+                <div style="font-weight: 700; font-size: 0.92rem; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                    <span>{{ contact_info.title or 'ติดต่อด่วนงานพัสดุ' }}</span>
+                    <span class="badge badge-info" style="font-size: 0.68rem; font-weight: normal;">แสดงให้ผู้ใช้เห็นในหน้ารายงานปัญหา</span>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-body); margin-top: 0.25rem; display: flex; gap: 1.2rem; flex-wrap: wrap;">
+                    <span>📍 <strong>สถานที่:</strong> {{ contact_info.location or '-' }}</span>
+                    <span>🕒 <strong>เวลา:</strong> {{ contact_info.hours or '-' }}</span>
+                    <span>☎️ <strong>โทร:</strong> {{ contact_info.phone or '-' }}</span>
+                    {% if contact_info.line %}
+                        <span>💬 <strong>LINE:</strong> {{ contact_info.line }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openModal('contactModal')" style="font-size: 0.78rem;">
+                <span>✏️</span> แก้ไขข้อมูลการติดต่อ
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="stat-grid" style="margin-bottom: 1.5rem;">
+    <div class="stat-card">
+        <div>
+            <div class="stat-value">{{ total_issues }}</div>
+            <div class="stat-label">รายงานทั้งหมด</div>
+        </div>
+        <div class="stat-icon" style="color: var(--primary);">📋</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: #f59e0b;">{{ pending_count }}</div>
+            <div class="stat-label">รอดำเนินการตรวจสอบ</div>
+        </div>
+        <div class="stat-icon" style="color: #f59e0b;">⏳</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: var(--accent-blue);">{{ in_progress_count }}</div>
+            <div class="stat-label">กำลังดำเนินการแก้ไข</div>
+        </div>
+        <div class="stat-icon" style="color: var(--accent-blue);">🔍</div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-value" style="color: var(--success);">{{ resolved_count }}</div>
+            <div class="stat-label">แก้ไขเรียบร้อยแล้ว</div>
+        </div>
+        <div class="stat-icon" style="color: var(--success);">✅</div>
+    </div>
+</div>
+
+<!-- Filter & Search Bar -->
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-body" style="padding: 1.25rem;">
+        <form method="GET" action="{{ url_for('admin_issues') }}" style="display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Status Pills -->
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-muted); margin-right: 0.25rem;">สถานะ:</span>
+                <a href="{{ url_for('admin_issues', status='all', category=cat_filter, q=search_q) }}" 
+                   class="btn btn-sm {% if status_filter == 'all' %}btn-primary{% else %}btn-secondary{% endif %}">
+                    ทั้งหมด ({{ total_issues }})
+                </a>
+                <a href="{{ url_for('admin_issues', status='pending', category=cat_filter, q=search_q) }}" 
+                   class="btn btn-sm {% if status_filter == 'pending' %}btn-primary{% else %}btn-secondary{% endif %}">
+                    ⏳ รอดำเนินการ
+                    {% if pending_count > 0 %}
+                        <span class="badge badge-warning" style="margin-left: 0.3rem;">{{ pending_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('admin_issues', status='in_progress', category=cat_filter, q=search_q) }}" 
+                   class="btn btn-sm {% if status_filter == 'in_progress' %}btn-primary{% else %}btn-secondary{% endif %}">
+                    🔍 กำลังตรวจสอบ
+                    {% if in_progress_count > 0 %}
+                        <span class="badge badge-info" style="margin-left: 0.3rem;">{{ in_progress_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="{{ url_for('admin_issues', status='resolved', category=cat_filter, q=search_q) }}" 
+                   class="btn btn-sm {% if status_filter == 'resolved' %}btn-primary{% else %}btn-secondary{% endif %}">
+                    ✅ แก้ไขแล้ว
+                </a>
+                <a href="{{ url_for('admin_issues', status='closed', category=cat_filter, q=search_q) }}" 
+                   class="btn btn-sm {% if status_filter == 'closed' %}btn-primary{% else %}btn-secondary{% endif %}">
+                    📁 ปิดงาน
+                </a>
+            </div>
+
+            <!-- Search and Category Filters -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 0.75rem; align-items: flex-end;">
+                <input type="hidden" name="status" value="{{ status_filter }}">
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="font-size: 0.78rem;">หมวดหมู่ปัญหา</label>
+                    <select name="category" class="form-control form-control-sm" onchange="this.form.submit()">
+                        <option value="all" {% if cat_filter == 'all' %}selected{% endif %}>-- ทุกหมวดหมู่ --</option>
+                        <option value="equipment" {% if cat_filter == 'equipment' %}selected{% endif %}>🛠️ อุปกรณ์ชำรุด/มีปัญหา</option>
+                        <option value="system" {% if cat_filter == 'system' %}selected{% endif %}>💻 ปัญหาการใช้งานระบบ</option>
+                        <option value="borrow" {% if cat_filter == 'borrow' %}selected{% endif %}>📋 ปัญหาการยืม-คืน</option>
+                        <option value="other" {% if cat_filter == 'other' %}selected{% endif %}>💡 อื่นๆ / ข้อเสนอแนะ</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="font-size: 0.78rem;">ค้นหาคำ / ชื่อผู้แจ้ง</label>
+                    <input type="text" name="q" class="form-control form-control-sm" placeholder="ค้นหาหัวข้อ, ผู้แจ้ง, รหัส นศ...." value="{{ search_q }}">
+                </div>
+
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary btn-sm" style="white-space: nowrap;">
+                        <span>🔍</span> ค้นหา
+                    </button>
+                    {% if status_filter != 'all' or cat_filter != 'all' or search_q %}
+                        <a href="{{ url_for('admin_issues') }}" class="btn btn-secondary btn-sm" title="ล้างตัวกรองทั้งหมด">
+                            <span>✕</span> ล้าง
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Issues Table Card -->
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 class="card-title">
+            <span>📋</span> รายการปัญหาที่แจ้งเข้ามา (พบ {{ issues|length }} รายการ)
+        </h3>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        {% if issues %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px;">รหัสแจ้ง</th>
+                            <th style="width: 140px;">วันที่แจ้ง</th>
+                            <th style="min-width: 180px;">ผู้รายงาน & การติดต่อ</th>
+                            <th style="width: 140px;">หมวดหมู่</th>
+                            <th style="min-width: 220px;">หัวข้อปัญหา & รายละเอียด</th>
+                            <th style="width: 80px; text-align: center;">รูปภาพ</th>
+                            <th style="width: 120px; text-align: center;">สถานะ</th>
+                            <th style="min-width: 160px;">ผลการตอบกลับ</th>
+                            <th style="width: 110px; text-align: right;">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for issue in issues %}
+                            <tr style="{% if issue.status == 'pending' %}background: rgba(245, 158, 11, 0.04);{% endif %}">
+                                <!-- Issue ID -->
+                                <td style="font-family: monospace; font-weight: 700; color: var(--primary);">
+                                    #IS-{{ "%04d"|format(issue.report_id) }}
+                                </td>
+
+                                <!-- Created Date -->
+                                <td style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+                                    <div>{{ issue.created_at.strftime('%d/%m/%Y') }}</div>
+                                    <div style="font-size: 0.72rem;">{{ issue.created_at.strftime('%H:%M น.') }}</div>
+                                </td>
+
+                                <!-- Reporter Info -->
+                                <td>
+                                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.88rem;">
+                                        {{ issue.user.full_name }}
+                                    </div>
+                                    <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                        <span class="badge {{ issue.user.role_badge_class }}" style="font-size: 0.65rem; padding: 0.1rem 0.35rem;">{{ issue.user.role_display }}</span>
+                                        {{ issue.user.student_or_citizen_id }}
+                                    </div>
+                                    {% if issue.contact_info %}
+                                        <div style="font-size: 0.74rem; color: var(--accent-blue); margin-top: 0.2rem;">
+                                            📞 {{ issue.contact_info }}
+                                        </div>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Category -->
+                                <td>
+                                    <span class="badge {{ issue.category_badge_class }}" style="font-size: 0.72rem; white-space: nowrap;">
+                                        {{ issue.category_display }}
+                                    </span>
+                                </td>
+
+                                <!-- Title, Description, Equipment -->
+                                <td>
+                                    <div style="font-weight: 700; color: var(--text-main); font-size: 0.88rem; margin-bottom: 0.25rem;">
+                                        {{ issue.title }}
+                                    </div>
+                                    {% if issue.equipment %}
+                                        <div style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 0.3rem;">
+                                            <span>🛠️ อุปกรณ์:</span> 
+                                            <span style="font-weight: 600; color: var(--primary);">{{ issue.equipment.equipment_code }}</span> 
+                                            {{ issue.equipment.name }}
+                                        </div>
+                                    {% endif %}
+                                    <div style="font-size: 0.8rem; color: var(--text-body); max-height: 2.8em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.4;">
+                                        {{ issue.description }}
+                                    </div>
+                                </td>
+
+                                <!-- Photo Thumbnail -->
+                                <td style="text-align: center;">
+                                    {% if issue.image_path %}
+                                        <button type="button" 
+                                                class="btn btn-secondary btn-sm" 
+                                                style="padding: 0.25rem 0.4rem; font-size: 0.75rem;" 
+                                                onclick="openImageLightbox('{{ url_for('static', filename=issue.image_path) }}', '{{ issue.title|e }}')" 
+                                                title="คลิกดูรูปถ่ายแนบ">
+                                            📷 ดูรูป
+                                        </button>
+                                    {% else %}
+                                        <span style="color: var(--text-muted); font-size: 0.75rem;">-</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Status Badge -->
+                                <td style="text-align: center;">
+                                    <span class="badge {{ issue.status_badge_class }}" style="font-size: 0.76rem; padding: 0.25rem 0.55rem;">
+                                        {{ issue.status_display }}
+                                    </span>
+                                </td>
+
+                                <!-- Admin Response Snippet -->
+                                <td style="font-size: 0.8rem; line-height: 1.4;">
+                                    {% if issue.admin_response %}
+                                        <div style="color: var(--success); font-weight: 600; font-size: 0.74rem;">✓ ตอบกลับแล้ว:</div>
+                                        <div style="color: var(--text-main); font-size: 0.78rem; max-height: 2.8em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                            {{ issue.admin_response }}
+                                        </div>
+                                        {% if issue.resolver %}
+                                            <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;">
+                                                โดย {{ issue.resolver.first_name }}
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <span style="color: var(--text-muted); font-size: 0.76rem;">ยังไม่มีการตอบกลับ</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Action Buttons -->
+                                <td style="text-align: right;">
+                                    <div style="display: flex; gap: 0.35rem; justify-content: flex-end; align-items: center;">
+                                        <button type="button" 
+                                                class="btn btn-primary btn-sm" 
+                                                style="padding: 0.3rem 0.6rem; font-size: 0.75rem;"
+                                                onclick="openIssueModal({
+                                                    report_id: {{ issue.report_id }},
+                                                    ticket_code: '#IS-{{ "%04d"|format(issue.report_id) }}',
+                                                    title: '{{ issue.title|e }}',
+                                                    category_display: '{{ issue.category_display|e }}',
+                                                    user_name: '{{ issue.user.full_name|e }}',
+                                                    user_role: '{{ issue.user.role_display|e }}',
+                                                    user_id_card: '{{ issue.user.student_or_citizen_id|e }}',
+                                                    department: '{{ issue.user.department|e }}',
+                                                    contact_info: '{{ issue.contact_info|e or '-' }}',
+                                                    equipment_info: '{% if issue.equipment %}{{ issue.equipment.equipment_code }} - {{ issue.equipment.name|e }}{% else %}-{% endif %}',
+                                                    description: '{{ issue.description|replace('\r', '')|replace('\n', '\\n')|e }}',
+                                                    image_url: '{% if issue.image_path %}{{ url_for('static', filename=issue.image_path) }}{% endif %}',
+                                                    status: '{{ issue.status }}',
+                                                    admin_response: '{{ issue.admin_response|replace('\r', '')|replace('\n', '\\n')|e if issue.admin_response else '' }}',
+                                                    created_at: '{{ issue.created_at.strftime('%d/%m/%Y %H:%M น.') }}'
+                                                })"
+                                                title="ดูรายละเอียด ตอบกลับ และอัปเดตสถานะ">
+                                            <span>💬</span> ตอบกลับ
+                                        </button>
+
+                                        {% if current_user.role == 'admin' %}
+                                            <form action="{{ url_for('admin_issue_delete', report_id=issue.report_id) }}" method="POST" style="display: inline;" onsubmit="return confirm('ยืนยันที่จะลบรายงานปัญหา #IS-{{ "%04d"|format(issue.report_id) }} ใช่หรือไม่?');">
+                                                <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.3rem 0.45rem; font-size: 0.75rem;" title="ลบรายการ">
+                                                    🗑️
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3.5rem 1rem; color: var(--text-muted);">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">✨</div>
+                <div style="font-size: 1rem; font-weight: 600;">ไม่พบรายการปัญหาตามเงื่อนไขที่เลือก</div>
+                <div style="font-size: 0.8rem; margin-top: 0.25rem;">ไม่มีรายงานปัญหาค้างอยู่ หรือลองปรับเปลี่ยนเงื่อนไขตัวกรอง</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: ตรวจสอบและตอบกลับปัญหา (Issue Management Modal) -->
+<div class="modal-backdrop" id="issueModal">
+    <div class="modal-box" style="max-width: 680px; width: 95%;">
+        <div class="modal-header">
+            <h2 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.05rem;">
+                <span>💬</span> 
+                <span>ตอบกลับปัญหาที่ผู้ใช้งานรายงานมา</span>
+                <span id="modalTicketCode" style="color: var(--primary); font-family: monospace;"></span>
+            </h2>
+            <button type="button" class="modal-close" onclick="closeModal('issueModal')">✕</button>
+        </div>
+
+        <form id="issueUpdateForm" method="POST" action="">
+            <div class="modal-body" style="max-height: calc(85vh - 140px); overflow-y: auto; padding: 1.25rem;">
+                <!-- Reporter & Summary Box -->
+                <div style="background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.9rem 1rem; margin-bottom: 1.25rem; font-size: 0.84rem; line-height: 1.6;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem;">
+                        <div>
+                            <strong>👤 ผู้รายงาน:</strong> <span id="modalUserName"></span> (<span id="modalUserRole"></span>)
+                        </div>
+                        <div>
+                            <strong>🆔 รหัส:</strong> <span id="modalUserIdCard"></span>
+                        </div>
+                        <div>
+                            <strong>🏢 แผนกวิชา:</strong> <span id="modalDepartment"></span>
+                        </div>
+                        <div>
+                            <strong>📞 ติดต่อกลับ:</strong> <span id="modalContactInfo"></span>
+                        </div>
+                        <div>
+                            <strong>🏷️ หมวดหมู่:</strong> <span id="modalCategory"></span>
+                        </div>
+                        <div>
+                            <strong>🕒 วันที่แจ้ง:</strong> <span id="modalCreatedAt"></span>
+                        </div>
+                    </div>
+                    <div id="modalEquipmentRow" style="margin-top: 0.4rem; padding-top: 0.4rem; border-top: 1px dashed var(--border);">
+                        <strong>🛠️ อุปกรณ์ที่เกี่ยวข้อง:</strong> <span id="modalEquipmentInfo" style="color: var(--primary); font-weight: 600;"></span>
+                    </div>
+                </div>
+
+                <!-- Problem Details -->
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 700; color: var(--text-main);">หัวข้อปัญหา / อาการที่แจ้ง:</label>
+                    <div id="modalTitle" style="font-weight: 600; font-size: 0.95rem; color: var(--primary); padding: 0.4rem 0.6rem; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm);"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 700; color: var(--text-main);">รายละเอียดปัญหา:</label>
+                    <div id="modalDescription" style="font-size: 0.85rem; color: var(--text-body); background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; white-space: pre-wrap; line-height: 1.5; min-height: 70px;"></div>
+                </div>
+
+                <!-- Attached Image Preview -->
+                <div class="form-group" id="modalImageContainer" style="display: none;">
+                    <label class="form-label" style="font-weight: 700; color: var(--text-main);">รูปถ่ายหลักฐานที่แนบมา:</label>
+                    <div style="text-align: center; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem;">
+                        <img id="modalImagePreview" src="" alt="Issue Attachment" style="max-height: 220px; max-width: 100%; object-fit: contain; border-radius: var(--radius-xs); cursor: pointer;" onclick="openImageLightbox(this.src, document.getElementById('modalTitle').innerText)">
+                        <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">(คลิกที่รูปเพื่อดูภาพขนาดเต็ม)</div>
+                    </div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border); margin: 1.25rem 0;">
+
+                <!-- Form Controls: Status and Admin Response -->
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 700; color: var(--text-main);">
+                        อัปเดตสถานะปัญหา <span style="color: var(--danger);">*</span>
+                    </label>
+                    <select name="status" id="modalStatusSelect" class="form-control" required style="font-weight: 600;">
+                        <option value="pending">⏳ รอดำเนินการ (Pending)</option>
+                        <option value="in_progress">🔍 กำลังตรวจสอบ / อยู่ระหว่างแก้ไข (In Progress)</option>
+                        <option value="resolved">✅ แก้ไขเรียบร้อยแล้ว (Resolved)</option>
+                        <option value="closed">📁 ปิดงาน / ยุติเรื่อง (Closed)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0.5rem;">
+                    <label class="form-label" style="font-weight: 700; color: var(--text-main);">
+                        ข้อความตอบกลับไปยังผู้แจ้ง (Admin Response) <span style="color: var(--danger);">*</span>
+                    </label>
+                    <textarea name="admin_response" id="modalAdminResponse" class="form-control" rows="3" placeholder="ระบุผลการตรวจสอบ แนวทางแก้ไข หรือข้อชี้แจงเพิ่มเติมถึงผู้แจ้ง..."></textarea>
+                    <div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 0.35rem; display: flex; align-items: center; gap: 0.3rem;">
+                        <span>🔔</span> ระบบจะส่งข้อความแจ้งเตือน (In-App Notification) ไปยังบัญชีผู้แจ้งทันทีที่บันทึก
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; background: var(--bg-subtle);">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('issueModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 600;">
+                    <span>💾</span> บันทึกและส่งข้อความแจ้งเตือน
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: แก้ไขข้อมูลการติดต่อที่แสดงให้ผู้ใช้งานเห็น (Contact Info Settings Modal) -->
+<div class="modal-backdrop" id="contactModal">
+    <div class="modal-box" style="max-width: 600px; width: 95%;">
+        <div class="modal-header">
+            <h2 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.05rem;">
+                <span>⚙️</span> 
+                <span>เปลี่ยนแปลงข้อมูลการติดต่อที่แสดงให้ผู้ใช้งานเห็น</span>
+            </h2>
+            <button type="button" class="modal-close" onclick="closeModal('contactModal')" aria-label="ปิด">✕</button>
+        </div>
+        <form method="POST" action="{{ url_for('admin_issues_update_contact') }}">
+            <div class="modal-body" style="padding: 1.25rem;">
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.5;">
+                    ℹ️ ข้อมูลที่ระบุด้านล่างนี้จะแสดงในการ์ด "ติดต่อด่วน" ในหน้ารายงานปัญหาของผู้ใช้งาน เพื่อให้นักเรียน อาจารย์ และบุคลากรติดต่อสอบถามหรือแจ้งเหตุเร่งด่วนได้ถูกต้อง
+                </p>
+
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600;">หัวข้อการติดต่อ <span style="color: var(--danger);">*</span></label>
+                    <input type="text" name="contact_title" class="form-control" value="{{ contact_info.title }}" placeholder="เช่น ติดต่อด่วนงานพัสดุ / แจ้งปัญหาฉุกเฉิน" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600;">สถานที่ตั้ง / ห้องปฏิบัติงาน</label>
+                    <input type="text" name="contact_location" class="form-control" value="{{ contact_info.location }}" placeholder="เช่น อาคาร 1 ชั้น 1 ห้องงานพัสดุ วิทยาลัยการอาชีพหนองหาน">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600;">เวลาให้บริการ</label>
+                    <input type="text" name="contact_hours" class="form-control" value="{{ contact_info.hours }}" placeholder="เช่น วันจันทร์ - ศุกร์ (08:30 - 16:30 น.)">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600;">เบอร์โทรศัพท์ / โทรศัพท์ภายใน</label>
+                    <input type="text" name="contact_phone" class="form-control" value="{{ contact_info.phone }}" placeholder="เช่น 042-xxxxxx หรือ โทรภายใน 104, 105">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 600;">LINE Official / ช่องทางติดต่ออื่น</label>
+                    <input type="text" name="contact_line" class="form-control" value="{{ contact_info.line }}" placeholder="เช่น @nonghan_parcel หรือ ID Line: nonghan104">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" style="font-weight: 600;">หมายเหตุเพิ่มเติม / คำแนะนำผู้ใช้งาน</label>
+                    <textarea name="contact_note" class="form-control" rows="2" placeholder="เช่น กรณีอุปกรณ์ชำรุดระหว่างการเรียนการสอนเร่งด่วน สามารถโทรแจ้งเจ้าหน้าที่ได้ทันที">{{ contact_info.note }}</textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; background: var(--bg-subtle);">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('contactModal')">ยกเลิก</button>
+                <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 600;">
+                    <span>💾</span> บันทึกข้อมูลการติดต่อ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lightbox Modal for Photo Enlarge -->
+<div class="modal-backdrop" id="imageLightboxModal" onclick="closeModal('imageLightboxModal')">
+    <div style="position: relative; max-width: 90vw; max-height: 90vh; margin: auto; display: flex; flex-direction: column; align-items: center; justify-content: center;" onclick="event.stopPropagation()">
+        <img id="lightboxImg" src="" alt="Enlarged" style="max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: var(--radius-md); box-shadow: var(--shadow-xl);">
+        <div id="lightboxCaption" style="color: #fff; margin-top: 0.5rem; font-size: 0.9rem; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,0.8);"></div>
+        <button type="button" style="position: absolute; top: -15px; right: -15px; background: #fff; border: 0; border-radius: 50%; width: 36px; height: 36px; font-weight: bold; cursor: pointer; box-shadow: var(--shadow-md);" onclick="closeModal('imageLightboxModal')">✕</button>
+    </div>
+</div>
+
+<script>
+// Bulletproof open/close modal functions
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+}
+
+function openContactModal() {
+    openModal('contactModal');
+}
+
+function openIssueModal(data) {
+    document.getElementById('issueUpdateForm').action = '/admin/issues/' + data.report_id + '/update';
+    document.getElementById('modalTicketCode').innerText = data.ticket_code;
+    document.getElementById('modalUserName').innerText = data.user_name;
+    document.getElementById('modalUserRole').innerText = data.user_role;
+    document.getElementById('modalUserIdCard').innerText = data.user_id_card;
+    document.getElementById('modalDepartment').innerText = data.department || '-';
+    document.getElementById('modalContactInfo').innerText = data.contact_info;
+    document.getElementById('modalCategory').innerText = data.category_display;
+    document.getElementById('modalCreatedAt').innerText = data.created_at;
+    document.getElementById('modalTitle').innerText = data.title;
+    document.getElementById('modalDescription').innerText = data.description;
+    
+    // Equipment
+    const eqRow = document.getElementById('modalEquipmentRow');
+    const eqInfo = document.getElementById('modalEquipmentInfo');
+    if (data.equipment_info && data.equipment_info !== '-') {
+        eqInfo.innerText = data.equipment_info;
+        eqRow.style.display = 'block';
+    } else {
+        eqRow.style.display = 'none';
+    }
+
+    // Image
+    const imgContainer = document.getElementById('modalImageContainer');
+    const imgPreview = document.getElementById('modalImagePreview');
+    if (data.image_url) {
+        imgPreview.src = data.image_url;
+        imgContainer.style.display = 'block';
+    } else {
+        imgPreview.src = '';
+        imgContainer.style.display = 'none';
+    }
+
+    // Form fields
+    document.getElementById('modalStatusSelect').value = data.status || 'pending';
+    document.getElementById('modalAdminResponse').value = data.admin_response || '';
+
+    // Show modal
+    openModal('issueModal');
+}
+
+function openImageLightbox(src, caption) {
+    document.getElementById('lightboxImg').src = src;
+    document.getElementById('lightboxCaption').innerText = caption || '';
+    openModal('imageLightboxModal');
+}
+
+// Close modal when clicking outside (on backdrop)
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.modal-backdrop').forEach(function(backdrop) {
+        backdrop.addEventListener('click', function(e) {
+            if (e.target === backdrop) {
+                closeModal(backdrop.id);
+            }
+        });
+    });
+});
+
+// Close modal when pressing Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal('issueModal');
+        closeModal('contactModal');
+        closeModal('imageLightboxModal');
+    }
+});
+</script>
+{% endblock %}
